@@ -15,10 +15,9 @@ class Player
     {
         string[] inputs;
         int turn = 0;
-        string summoncommand = "";
-        string attackcommand = "";
+        string command = "";
+        string board = "";
         int tempcost = 0;
-        Stack<int> targets = new Stack<int>();
 
         // game loop
         while (true)
@@ -48,39 +47,25 @@ class Player
                 int opponentHealthChange = int.Parse(inputs[9]);
                 int cardDraw = int.Parse(inputs[10]);
                 //Console.Error.WriteLine(draft);
-                //Summon:
                 if (turn > 30) {
-                    if (cost <= turn - 29 - tempcost || location == 0){
-                        summoncommand += "SUMMON " + instanceId + ";";
+                Console.Error.WriteLine(instanceId);
+                Console.Error.WriteLine(cost);
+                    if (cost <= turn - 29 - tempcost){
+                        command += "SUMMON " + instanceId + ";";
+                        board +=  "ATTACK " + instanceId + " -1;";
                         tempcost += cost;
                     }
-                //Target:
-                    if (location == -1 && abilities.Contains("G")){
-                        targets.Push(instanceId);
-                    }          
-                
-                //Attack:
-                    if (location == 1){
-                        if(targets.Count != 0)
-                            attackcommand += "ATTACK " + instanceId +" " + targets.Pop()+ ";";
-                        }else{
-                            attackcommand += "ATTACK " + instanceId + " -1;";
-                        }
                 }
-                
-                
             }
             tempcost = 0;
-            if(turn < 41){
-                ++turn;
-            }
+            ++turn;
 
             // Write an action using Console.WriteLine()
-            if (summoncommand == "" && attackcommand == ""){
-                summoncommand = "PASS";
+            if (command == "" && board == ""){
+                command = "PASS";
             }
-            Console.WriteLine(summoncommand+attackcommand);
-            summoncommand = "";
+            Console.WriteLine(command+board);
+            command = "";
         }
     }
 }
