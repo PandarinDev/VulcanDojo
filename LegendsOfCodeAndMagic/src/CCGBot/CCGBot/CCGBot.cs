@@ -7,7 +7,6 @@ using System.Collections.Generic;
 
 public class Card
 {
-
     public int cardNumber;
     public int instanceId;
     public int location;
@@ -19,110 +18,265 @@ public class Card
     public int myHealthChange;
     public int opponentHealthChange;
     public int cardDraw;
-
-
 }
-
 
 public static class Util
 {
-    public static int GetBestCard(List<Card> cards, List<Card> deck)
+    public static double GetValue(Card card, int[] curve)
     {
-        var other = new List<Card>(cards);
-        
-        other = other.OrderBy(c => c.attack).ToList();
-        if (Util.avg(deck) > 2.5)
+        //TODO: improve red and blue item values
+        double value = 0;
+        value += Math.Abs(card.attack);
+        value += Math.Abs(card.defense);
+        value += card.cardDraw;
+        value += card.abilities.Replace("-", "").Replace("L", "L2").Replace("W", "W2").Length * 0.5;
+        value += card.myHealthChange / 3;
+        value -= card.opponentHealthChange / 3;
+        value -= card.cost * 2;
+        //marginal penalty
+        if (card.cost == 0 || card.attack == 0)
         {
-            other = other.OrderBy(c => c.cost).ToList();
+            value -= 2;
         }
-        else
+        //nonboard penalty
+        if (card.cardType == 2 || card.cardType == 3)
         {
-            other = other.OrderByDescending (c => c.cost).ToList();
+            value -= 1;
         }
-        return cards.IndexOf(other[0]);
+        //balance penalty, nerf decimate
+        if (card.cardNumber == 155)
+        {
+            value -= 90;
+        }
+        if (GetCurveFit(card.cost, curve))
+        {
+            --value;
+        }
+        if (card.attack - card.defense >= 2)
+        {
+            value += 0.01;
+        }
+        if (-card.attack + card.defense >= 2)
+        {
+            value -= 0.01;
+        }
+
+        return value;
+    }
+    public static void CurveAdd(int cost, int[] curve)
+    {
+        if (cost > 1 && cost < 7)
+        {
+            --curve[cost - 1];
+
+        }
+        if (cost <= 1)
+        {
+            --curve[0];
+        }
+        if (cost > 6)
+        {
+            --curve[6];
+        }
+
+    }
+    public static bool GetCurveFit(int cost, int[] curve)
+    {
+
+        if (cost > 1 && cost < 7 && curve[cost - 1] <= 0)
+        {
+            return true;
+        }
+        if (cost <= 1 && curve[0] <= 0)
+        {
+            return true;
+        }
+        if (cost > 6 && curve[6] <= 0)
+        {
+            return true;
+        }
+        return false;
+
     }
 
-    public static float avg(List<Card> deck)
+    public static string GetBestCard(List<Card> enemyBoard, int[] curve)
     {
-        float av = 0;
-        foreach (var card in deck)
-        {
-            av += card.cost;
-        }
-        if (deck.Count > 0)
-            av /= deck.Count;
-        return av;
-    }
-
-    public static Card MaxAttack(List<Card> deck)
-    {
+        double maxValue = -10000;
         int max = 0;
-        Card c = null;
-        foreach (var card in deck)
+        for (int i = 0; i < 3; i++)
         {
-            if (card.attack > max)
+            double cardValue = GetValue(enemyBoard[i], curve);
+            if (cardValue >= maxValue)
             {
-                max += card.attack;
-                c = card;
+                maxValue = cardValue;
+                max = i;
             }
+            //Console.Error.WriteLine(cardList[i].cardNumber + " " + cardValue);
         }
-        return c;
-    }
+        CurveAdd(enemyBoard[max].cost, curve);
+        return "PICK " + max;
 
-    public static int GetBestSummon(List<Card> hand, ref int mana)
+    }
+    private static Card GetMostExpensiveCard(int mana, int myBoardCount, int enemyBoardCount, List<Card> myHand)
     {
-        hand.OrderByDescending(c => c.cost);
-        foreach(var card in hand)
+        foreach (Card card in myHand)
         {
-            if(card.cost <= mana)
+            //Console.Error.WriteLine(card.cost);
+            int maxCost = 0;
+            if (card.cost <= mana)
             {
-                mana -= card.cost;
-                return card.instanceId;
+                if (card.cardType == 0 && myBoardCount < 6 || card.cardType == 3 || card.cardType == 1 && myBoardCount != 0 || card.cardType == 2 && enemyBoardCount != 0)
+                {
+                    if (maxCost <= card.cost)
+                    {
+                        maxCost = card.cost;
+                        return card;
+                    }
+                }
             }
         }
-        return -1;
+        return null;
+    }
+    public static string GetBestSummon(int turn, List<Card> enemyBoard, List<Card> myHand, List<Card> myBoard)
+    {
+        int mana = turn - 30;
+        int boardCount = myBoard.Count;
+        int enemyBoardCount = myBoard.Count;
+        var playList = new List<int>();
+        var card = new Card();
+        string command = "";
+        while (true)
+        {
+            card = GetMostExpensiveCard(mana, boardCount, enemyBoardCount, myHand);
+            if (card == null)
+            {
+                break;
+            }
+            Console.Error.WriteLine(card.instanceId);
+            string target = "";
+            if (card.cardType == 1)
+            {
+                if (myBoard.Count != 0)
+                {
+                    target += myBoard[0].instanceId;
+                }
+                else
+                {
+                    target = (command.Split(' '))[1];
+                }
+            }
+            if (card.cardType == 2 || card.cardType == 3 && card.defense < 0)
+            {
+                if (enemyBoard.Count == 0)
+                {
+                    target += -1;
+                }
+                else
+                {
+                    target += enemyBoard[0].instanceId;
+                    if (enemyBoard[0].defense <= -card.defense)
+                    {
+                        enemyBoard.RemoveAt(0);
+                    }
+                }
+            }
+            if (card.cardType == 0)
+            {
+                ++boardCount;
+                if (card.abilities.Contains("C"))
+                {
+                    myBoard.Add(card);
+                }
+                command += "SUMMON " + card.instanceId + ";";
+            }
+            else
+            {
+                command += "USE " + card.instanceId + " " + target + ";";
+            }
+            target = "";
+            mana -= card.cost;
+            myHand.Remove(card);
+        }
+
+        return command;
+    }
+    public static string Attack(List<Card> enemyBoard, List<Card> myBoard)
+    {
+        var card = new Card();
+        string attacks = "";
+        for (int i = 0; i < enemyBoard.Count; i++)
+        {
+            card = enemyBoard[i];
+            if (card.location == -1)
+            {
+                if (!(card.abilities.Contains("G")))
+                {
+
+                    //Console.Error.WriteLine(card.abilities + ", " + enemyBoard.Count);
+                    enemyBoard.RemoveAt(i);
+
+                    //Console.Error.WriteLine(enemyBoard.Count);
+                    --i;
+                }
+            }
+            //Console.Error.WriteLine(card.cardNumber + " " + card.instanceId + " " + card.location);
+        }
+        for (int i = 0; i < myBoard.Count; i++)
+        {
+            card = myBoard[i];
+            if (enemyBoard.Count != 0)
+            {
+                attacks += "ATTACK " + card.instanceId + " " + enemyBoard[0].instanceId + ";";
+                if (card.abilities.Contains("L"))
+                {
+                    enemyBoard[0].defense = 0;
+                }
+                else
+                {
+                    enemyBoard[0].defense -= card.attack;
+                }
+                if (enemyBoard[0].defense <= 0)
+                {
+                    enemyBoard.RemoveAt(0);
+                }
+            }
+            else
+            {
+                attacks += "ATTACK " + card.instanceId + " -1;";
+            }
+        }
+
+        return attacks;
     }
 }
-
 /**
  * Auto-generated code below aims at helping you parse
  * the standard input according to the problem statement.
  **/
 class Player
 {
-
-
     static void Main(string[] args)
     {
         string[] inputs;
-        var cards = new List<Card>();
-        var deck = new List<Card>();
-        var costs = new List<int>();
-        var hand = new List<Card>();
-        var cardsInBoard = new List<Card>();
-        Stack<int> targets = new Stack<int>();
-        string command = "";
-        string board = "";
-        int playerMana = 0;
-        string attackcommand = "";
-        int cardCountInBoard = 0;
+        var enemyBoard = new List<Card>();
+        var myHand = new List<Card>();
+        var myBoard = new List<Card>();
         int turn = 0;
+        int[] curve = new int[] { 2, 7, 7, 6, 4, 2, 2 };
+
         // game loop
         while (true)
         {
-
             for (int i = 0; i < 2; i++)
             {
                 inputs = Console.ReadLine().Split(' ');
                 int playerHealth = int.Parse(inputs[0]);
-                playerMana = int.Parse(inputs[1]);
+                int playerMana = int.Parse(inputs[1]);
                 int playerDeck = int.Parse(inputs[2]);
                 int playerRune = int.Parse(inputs[3]);
             }
             int opponentHand = int.Parse(Console.ReadLine());
             int cardCount = int.Parse(Console.ReadLine());
-
-            cards.Clear();
             for (int i = 0; i < cardCount; i++)
             {
                 inputs = Console.ReadLine().Split(' ');
@@ -140,83 +294,48 @@ class Player
                     opponentHealthChange = int.Parse(inputs[9]),
                     cardDraw = int.Parse(inputs[10])
                 };
-                cards.Add(card);
-                
-                if (turn > 30)
+
+                //Classify cards given their location
+                // if draft phase: store it in draft stack, process value and choose
+                // if game phase: if enemy board decide what to trade
+                //                if hand decide what to play
+                //                if my board decide where to hit
+                // draft is when turn < 30
+                switch (card.location)
                 {
-                    if (card.location == 0)
-                    {
-                        hand.Add(card);
-                    }
-                    //Target:
-                    if (card.location == -1 && card.abilities.Contains("G"))
-                    {
-                        targets.Push(card.instanceId);
-                    }
-                    else if(card.location == 1)
-                    {
-                        cardsInBoard.Add(card);
-                        cardCountInBoard++;
-                    }
-                    //  Console.Error.WriteLine(card.instanceId);
-                    //  Console.Error.WriteLine(card.cost);
-
-
-
-
+                    case -1:
+                        enemyBoard.Add(card);
+                        break;
+                    case 0:
+                        myHand.Add(card);
+                        break;
+                    case 1:
+                        myBoard.Add(card);
+                        break;
                 }
+                //if(playHand.Count() != 0){Console.Error.WriteLine(playHand[0].attack);}
+
+
+
             }
-
-            //draft phase
-            if (turn < 30)
+            //modify curve
+            if (turn < 42)
             {
-                var bestIndex = Util.GetBestCard(cards, deck);
-                Console.WriteLine("PICK " + bestIndex);
-
-                costs.Add(cards[bestIndex].cost);
-                deck.Add(cards[bestIndex]);
+                ++turn;
+            }
+            //Console.WriteLine("PASS");
+            //Console.Error.WriteLine("Debug");
+            if (turn <= 30)
+            {
+                Console.WriteLine(Util.GetBestCard(myHand, curve));
             }
             else
             {
-                //summon
-                int actMana = playerMana;
-                int summon;
-                do
-                {
-                    summon = Util.GetBestSummon(hand, ref playerMana);
-                    cardsInBoard.Add(hand.Find(c => c.instanceId == summon));
-                    hand.Remove(hand.Find(c => c.instanceId == summon));
-                    if (summon != -1 && cardCountInBoard < 6)
-                    {
-                        command += "SUMMON " + summon + ";";
-                    }
-                }
-                while (summon != -1 && cardCountInBoard < 6);
-
-                //attack
-                //Attack:
-                foreach (Card card in cardsInBoard)
-                {
-
-                    if (targets.Count != 0)
-                    { 
-                        attackcommand += "ATTACK " + card.instanceId + " " + targets.Pop() + ";";
-                    }
-                    else
-                    {
-                        attackcommand += "ATTACK " + card.instanceId + " -1;";
-                    }
-                }
-            
-                if (command == "" && board == "")
-                {
-                    command = "PASS";
-                }
-                Console.WriteLine(command + board);
-                command = "";
+                Console.WriteLine(Util.GetBestSummon(turn, enemyBoard, myHand, myBoard) + Util.Attack(enemyBoard, myBoard));
             }
-            ++turn;
-
+            enemyBoard.Clear();
+            myHand.Clear();
+            myBoard.Clear();
         }
     }
 }
