@@ -8,7 +8,15 @@ using System.Collections.Generic;
 namespace CCG
 {
 
-    public class Card
+    public class Gambler
+    {
+        public int playerHealth;
+        public int playerMana;
+        public int playerDeck;
+        public int playerRune;
+        public int identity;
+    }
+        public class Card
     {
         public int cardNumber;
         public int instanceId;
@@ -46,6 +54,31 @@ namespace CCG
 
     public static class Util
     {
+        public static void SetGamblerStat(Gambler gambler, string input)
+        {
+            string[] inputs = input.Split(' ');
+            gambler.playerHealth = int.Parse(inputs[0]);
+            gambler.playerMana = int.Parse(inputs[1]);
+            gambler.playerDeck = int.Parse(inputs[2]);
+            gambler.playerRune = int.Parse(inputs[3]);
+        }
+        public static Card SetCardValue(string input)
+        {
+            var card = new Card();
+            string[] inputs = input.Split(' ');
+            card.cardNumber = int.Parse(inputs[0]);
+            card.instanceId = int.Parse(inputs[1]);
+            card.location = int.Parse(inputs[2]);
+            card.cardType = int.Parse(inputs[3]);
+            card.cost = int.Parse(inputs[4]);
+            card.attack = int.Parse(inputs[5]);
+            card.defense = int.Parse(inputs[6]);
+            card.abilities = inputs[7];
+            card.myHealthChange = int.Parse(inputs[8]);
+            card.opponentHealthChange = int.Parse(inputs[9]);
+            card.cardDraw = int.Parse(inputs[10]);
+            return card;
+        }
         public static double GetValue(Card card, int[] curve)
         {
             //TODO: improve red and blue item values
@@ -270,52 +303,27 @@ namespace CCG
     {
         static void Main(string[] args)
         {
-            string[] inputs;
-            var enemyBoard = new List<Card>();
+            var firstPlayer = new Gambler();
+            var secondPlayer = new Gambler();
             var myHand = new List<Card>();
             var myBoard = new List<Card>();
+            var enemyBoard = new List<Card>();
             int turn = 0;
             int[] curve = new int[] { 2, 8, 7, 5, 4, 2, 2 };
 
             // game loop
             while (true)
             {
-                for (int i = 0; i < 2; i++)
-                {
-                    inputs = Console.ReadLine().Split(' ');
-                    Console.Error.WriteLine(String.Join(" ", inputs));
-                    int playerHealth = int.Parse(inputs[0]);
-                    int playerMana = int.Parse(inputs[1]);
-                    int playerDeck = int.Parse(inputs[2]);
-                    int playerRune = int.Parse(inputs[3]);
-                }
+                Util.SetGamblerStat(firstPlayer, Console.ReadLine());
+                Util.SetGamblerStat(secondPlayer, Console.ReadLine());
                 int opponentHand = int.Parse(Console.ReadLine());
                 int cardCount = int.Parse(Console.ReadLine());
                 for (int i = 0; i < cardCount; i++)
                 {
-                    inputs = Console.ReadLine().Split(' ');
-                    Console.Error.WriteLine(String.Join(" ", inputs));
-                    var card = new Card
-                    {
-                        cardNumber = int.Parse(inputs[0]),
-                        instanceId = int.Parse(inputs[1]),
-                        location = int.Parse(inputs[2]),
-                        cardType = int.Parse(inputs[3]),
-                        cost = int.Parse(inputs[4]),
-                        attack = int.Parse(inputs[5]),
-                        defense = int.Parse(inputs[6]),
-                        abilities = inputs[7],
-                        myHealthChange = int.Parse(inputs[8]),
-                        opponentHealthChange = int.Parse(inputs[9]),
-                        cardDraw = int.Parse(inputs[10])
-                    };
+                    Card card = Util.SetCardValue(Console.ReadLine());
 
-                    //Classify cards given their location
-                    // if draft phase: store it in draft stack, process value and choose
-                    // if game phase: if enemy board decide what to trade
-                    //                if hand decide what to play
-                    //                if my board decide where to hit
-                    // draft is when turn < 30
+                    Console.Error.WriteLine(card.location);
+                    //cards.Add(card);
                     switch (card.location)
                     {
                         case -1:
@@ -328,12 +336,9 @@ namespace CCG
                             myBoard.Add(card);
                             break;
                     }
-                    //if(playHand.Count() != 0){Console.Error.WriteLine(playHand[0].attack);}
-
-
 
                 }
-                //modify curve
+                
                 if (turn < 42)
                 {
                     ++turn;
