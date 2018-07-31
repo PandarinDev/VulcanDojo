@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using CCG;
 using System.Collections.Generic;
+using System.IO;
 
 namespace CCGBotUnitTest
 {
@@ -11,18 +12,17 @@ namespace CCGBotUnitTest
         [TestMethod]
         public void Test_GetMostExpensiveCard()
         {
+            string input = @"120 -1 0 1 2 1 0 ----L- 0 0 0
+90 -1 0 0 8 5 5 -C---- 0 0 0
+60 -1 0 0 7 4 8 ------ 0 0 0";
+            StringReader strReader = new StringReader(input);
             List<Card> cards = new List<Card>()
            {
-               new Card(0, 0, 0, 0, 5, 0, 0, string.Empty, 0, 0, 0),
-               new Card(1, 0, 0, 0, 4, 0, 0, string.Empty, 0, 0, 0),
-               new Card(2, 0, 0, 0, 3, 0, 0, string.Empty, 0, 0, 0),
-               new Card(2, 0, 3, 0, 2, 0, 0, string.Empty, 0, 0, 0),
-               new Card(2, 0, 1, 0, 3, 0, 0, string.Empty, 0, 0, 0),
+               Util.SetCardValue(strReader.ReadLine()),
+               Util.SetCardValue(strReader.ReadLine()),
+               Util.SetCardValue(strReader.ReadLine())
            };
-           Assert.AreEqual(cards[0], Util.GetMostExpensiveCard(5, 0, 0, cards));
-           Assert.AreEqual(cards[3], Util.GetMostExpensiveCard(5, 6, 0, cards));
-           Assert.AreEqual(cards[1], Util.GetMostExpensiveCard(4, 5, 0, cards));
-           Assert.AreEqual(cards[4], Util.GetMostExpensiveCard(5, 6, 0, cards));
+           Assert.AreEqual(cards[1], Util.GetMostExpensiveCard(8, 0, 0, cards));
         }
 
         [TestMethod]
