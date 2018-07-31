@@ -1,20 +1,77 @@
 using System;
 using System.Linq;
-using System.IO;
-using System.Text;
-using System.Collections;
 using System.Collections.Generic;
 
 namespace CCG
 {
+    class Player
+    {
+        static void Main(string[] args)
+        {
+            var firstPlayer = new Gambler();
+            var secondPlayer = new Gambler();
+            var myHand = new List<Card>();
+            var myBoard = new List<Card>();
+            var enemyBoard = new List<Card>();
+            int turn = 0;
+            int[] curve = new int[] { 2, 8, 7, 5, 4, 2, 2 };
+
+            // game loop
+            while (true)
+            {
+                firstPlayer = Util.ParseGambler(Console.ReadLine());
+                secondPlayer = Util.ParseGambler(Console.ReadLine());
+                int opponentHand = int.Parse(Console.ReadLine());
+                int cardCount = int.Parse(Console.ReadLine());
+                for (int i = 0; i < cardCount; i++)
+                {
+                    Card card = Util.ParseCard(Console.ReadLine());
+
+                    Console.Error.WriteLine(card.Location);
+                    //cards.Add(card);
+                    switch (card.Location)
+                    {
+                        case -1:
+                            enemyBoard.Add(card);
+                            break;
+                        case 0:
+                            myHand.Add(card);
+                            break;
+                        case 1:
+                            myBoard.Add(card);
+                            break;
+                    }
+
+                }
+
+                if (turn < 42)
+                {
+                    ++turn;
+                }
+                //Console.WriteLine("PASS");
+                //Console.Error.WriteLine("Debug");
+                if (turn <= 30)
+                {
+                    Console.WriteLine(Util.GetBestCard(myHand, curve));
+                }
+                else
+                {
+                    Console.WriteLine(Util.GetBestSummon(turn, enemyBoard, myHand, myBoard) + Util.Attack(enemyBoard, myBoard));
+                }
+                enemyBoard.Clear();
+                myHand.Clear();
+                myBoard.Clear();
+            }
+        }
+    }
 
     public class Gambler
     {
-        public int playerHealth;
-        public int playerMana;
-        public int playerDeck;
-        public int playerRune;
-        public int identity;
+        public int PlayerHealth { get; set; }
+        public int PlayerMana { get; set; }
+        public int PlayerDeck { get; set; }
+        public int PlayerRune { get; set; }
+        public int Identity { get; set; }
     }
 
     public class Card
@@ -30,22 +87,24 @@ namespace CCG
         public int MyHealthChange { get; set; }
         public int OpponentHealthChange { get; set; }
         public int CardDraw { get; set; }
-
-        public Card() { }
     }
 
     public static class Util
     {
-        public static void SetGamblerStat(Gambler gambler, string input)
+        public static Gambler ParseGambler(string input)
         {
             string[] inputs = input.Split(' ');
-            gambler.playerHealth = int.Parse(inputs[0]);
-            gambler.playerMana = int.Parse(inputs[1]);
-            gambler.playerDeck = int.Parse(inputs[2]);
-            gambler.playerRune = int.Parse(inputs[3]);
+            var gambler = new Gambler
+            {
+                PlayerHealth = int.Parse(inputs[0]),
+                PlayerMana = int.Parse(inputs[1]),
+                PlayerDeck = int.Parse(inputs[2]),
+                PlayerRune = int.Parse(inputs[3])
+            };
+            return gambler;
         }
 
-        public static Card SetCardValue(string input)
+        public static Card ParseCard(string input)
         {
             string[] inputs = input.Split(' ');
             var card = new Card
@@ -285,70 +344,4 @@ namespace CCG
             return attacks;
         }
     }
-
-    /**
-     * Auto-generated code below aims at helping you parse
-     * the standard input according to the problem statement.
-     **/
-    class Player
-    {
-        static void Main(string[] args)
-        {
-            var firstPlayer = new Gambler();
-            var secondPlayer = new Gambler();
-            var myHand = new List<Card>();
-            var myBoard = new List<Card>();
-            var enemyBoard = new List<Card>();
-            int turn = 0;
-            int[] curve = new int[] { 2, 8, 7, 5, 4, 2, 2 };
-
-            // game loop
-            while (true)
-            {
-                Util.SetGamblerStat(firstPlayer, Console.ReadLine());
-                Util.SetGamblerStat(secondPlayer, Console.ReadLine());
-                int opponentHand = int.Parse(Console.ReadLine());
-                int cardCount = int.Parse(Console.ReadLine());
-                for (int i = 0; i < cardCount; i++)
-                {
-                    Card card = Util.SetCardValue(Console.ReadLine());
-
-                    Console.Error.WriteLine(card.Location);
-                    //cards.Add(card);
-                    switch (card.Location)
-                    {
-                        case -1:
-                            enemyBoard.Add(card);
-                            break;
-                        case 0:
-                            myHand.Add(card);
-                            break;
-                        case 1:
-                            myBoard.Add(card);
-                            break;
-                    }
-
-                }
-                
-                if (turn < 42)
-                {
-                    ++turn;
-                }
-                //Console.WriteLine("PASS");
-                //Console.Error.WriteLine("Debug");
-                if (turn <= 30)
-                {
-                    Console.WriteLine(Util.GetBestCard(myHand, curve));
-                }
-                else
-                {
-                    Console.WriteLine(Util.GetBestSummon(turn, enemyBoard, myHand, myBoard) + Util.Attack(enemyBoard, myBoard));
-                }
-                enemyBoard.Clear();
-                myHand.Clear();
-                myBoard.Clear();
-            }
-        }
-    }
-
 }
