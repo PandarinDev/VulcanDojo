@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.IO;
 using System.Text;
@@ -46,7 +46,7 @@ public static class Util
         //balance penalty, nerf decimate
         if (card.cardNumber == 155)
         {
-            value -= 90;
+            value -= 94;
         }
         if (GetCurveFit(card.cost, curve))
         {
@@ -99,13 +99,13 @@ public static class Util
 
     }
 
-    public static string GetBestCard(List<Card> enemyBoard, int[] curve)
+    public static string GetBestCard(List<Card> myHand, int[] curve)
     {
         double maxValue = -10000;
         int max = 0;
         for (int i = 0; i < 3; i++)
         {
-            double cardValue = GetValue(enemyBoard[i], curve);
+            double cardValue = GetValue(myHand[i], curve);
             if (cardValue >= maxValue)
             {
                 maxValue = cardValue;
@@ -113,7 +113,7 @@ public static class Util
             }
             //Console.Error.WriteLine(cardList[i].cardNumber + " " + cardValue);
         }
-        CurveAdd(enemyBoard[max].cost, curve);
+        CurveAdd(myHand[max].cost, curve);
         return "PICK " + max;
 
     }
@@ -152,7 +152,6 @@ public static class Util
             {
                 break;
             }
-            Console.Error.WriteLine(card.instanceId);
             string target = "";
             if (card.cardType == 1)
             {
@@ -165,6 +164,7 @@ public static class Util
                     target = (command.Split(' '))[1];
                 }
             }
+            //TODO: improve debuff items
             if (card.cardType == 2 || card.cardType == 3 && card.defense < 0)
             {
                 if (enemyBoard.Count == 0)
@@ -202,42 +202,31 @@ public static class Util
     }
     public static string Attack(List<Card> enemyBoard, List<Card> myBoard)
     {
-        var card = new Card();
         string attacks = "";
-        for (int i = 0; i < enemyBoard.Count; i++)
+        var enemyTreat = new List<Card>();
+        foreach (Card card in enemyBoard)
         {
-            card = enemyBoard[i];
-            if (card.location == -1)
+            if (card.abilities.Contains("G"))
             {
-                if (!(card.abilities.Contains("G")))
-                {
-
-                    //Console.Error.WriteLine(card.abilities + ", " + enemyBoard.Count);
-                    enemyBoard.RemoveAt(i);
-
-                    //Console.Error.WriteLine(enemyBoard.Count);
-                    --i;
-                }
+                enemyTreat.Add(card);
             }
-            //Console.Error.WriteLine(card.cardNumber + " " + card.instanceId + " " + card.location);
         }
-        for (int i = 0; i < myBoard.Count; i++)
+        foreach (Card card in myBoard)
         {
-            card = myBoard[i];
-            if (enemyBoard.Count != 0)
+            if (enemyTreat.Count != 0)
             {
-                attacks += "ATTACK " + card.instanceId + " " + enemyBoard[0].instanceId + ";";
+                attacks += "ATTACK " + card.instanceId + " " + enemyTreat[0].instanceId + ";";
                 if (card.abilities.Contains("L"))
                 {
-                    enemyBoard[0].defense = 0;
+                    enemyTreat[0].defense = 0;
                 }
                 else
                 {
-                    enemyBoard[0].defense -= card.attack;
+                    enemyTreat[0].defense -= card.attack;
                 }
-                if (enemyBoard[0].defense <= 0)
+                if (enemyTreat[0].defense <= 0)
                 {
-                    enemyBoard.RemoveAt(0);
+                    enemyTreat.RemoveAt(0);
                 }
             }
             else
@@ -262,7 +251,7 @@ class Player
         var myHand = new List<Card>();
         var myBoard = new List<Card>();
         int turn = 0;
-        int[] curve = new int[] { 2, 7, 7, 6, 4, 2, 2 };
+        int[] curve = new int[] { 2, 8, 7, 5, 4, 2, 2 };
 
         // game loop
         while (true)
@@ -270,6 +259,7 @@ class Player
             for (int i = 0; i < 2; i++)
             {
                 inputs = Console.ReadLine().Split(' ');
+                Console.Error.WriteLine(String.Join(" ", inputs));
                 int playerHealth = int.Parse(inputs[0]);
                 int playerMana = int.Parse(inputs[1]);
                 int playerDeck = int.Parse(inputs[2]);
@@ -280,6 +270,7 @@ class Player
             for (int i = 0; i < cardCount; i++)
             {
                 inputs = Console.ReadLine().Split(' ');
+                Console.Error.WriteLine(String.Join(" ", inputs));
                 var card = new Card
                 {
                     cardNumber = int.Parse(inputs[0]),
