@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace CCG
 {
@@ -13,85 +14,67 @@ namespace CCG
             var myHand = new List<Card>();
             var myBoard = new List<Card>();
             var enemyBoard = new List<Card>();
+
             int turn = 0;
+
+            const int draftTurnCount = 30;
+            const int lastTurn = draftTurnCount + 50;
             int[] curve = new int[] { 2, 8, 7, 5, 4, 2, 2 };
 
+            Stopwatch stopwatch = new Stopwatch();
             // game loop
             while (true)
             {
-                firstPlayer = Util.ParseGambler(Console.ReadLine());
-                secondPlayer = Util.ParseGambler(Console.ReadLine());
-                int opponentHand = int.Parse(Console.ReadLine());
+                stopwatch.Restart();
+
+                firstPlayer = Parse.Gambler(Console.ReadLine());
+                secondPlayer = Parse.Gambler(Console.ReadLine());
+                int opponentHandCount = int.Parse(Console.ReadLine());
                 int cardCount = int.Parse(Console.ReadLine());
+
                 for (int i = 0; i < cardCount; i++)
                 {
-                    Card card = Util.ParseCard(Console.ReadLine());
-
-                    Console.Error.WriteLine(card.Location);
-                    //cards.Add(card);
+                    Card card = Parse.Card(Console.ReadLine());
+                    
                     switch (card.Location)
                     {
-                        case -1:
+                        case BoardLocation.EnemySide:
                             enemyBoard.Add(card);
                             break;
-                        case 0:
+                        case BoardLocation.InHand:
                             myHand.Add(card);
                             break;
-                        case 1:
+                        case BoardLocation.PlayerSide:
                             myBoard.Add(card);
                             break;
                     }
-
                 }
 
-                if (turn < 42)
+                if (turn < lastTurn)
                 {
                     ++turn;
                 }
-                //Console.WriteLine("PASS");
-                //Console.Error.WriteLine("Debug");
-                if (turn <= 30)
+                
+                if (turn <= draftTurnCount)
                 {
-                    Console.WriteLine(Util.GetBestCard(myHand, curve));
+                    Console.WriteLine(DraftPhase.GetBestCard(myHand, curve));
                 }
                 else
                 {
-                    Console.WriteLine(Util.GetBestSummon(turn, enemyBoard, myHand, myBoard) + Util.Attack(enemyBoard, myBoard));
+                    Console.WriteLine(BattlePhase.GetBestSummon(turn, enemyBoard, myHand, myBoard) + BattlePhase.Attack(enemyBoard, myBoard));
                 }
                 enemyBoard.Clear();
                 myHand.Clear();
                 myBoard.Clear();
+
+                Console.Error.WriteLine($"Turn took {stopwatch.ElapsedMilliseconds} ms");
             }
         }
     }
 
-    public class Gambler
+    public static class Parse
     {
-        public int PlayerHealth { get; set; }
-        public int PlayerMana { get; set; }
-        public int PlayerDeck { get; set; }
-        public int PlayerRune { get; set; }
-        public int Identity { get; set; }
-    }
-
-    public class Card
-    {
-        public int CardNumber { get; set; }
-        public int InstanceId { get; set; }
-        public int Location { get; set; }
-        public int CardType { get; set; }
-        public int Cost { get; set; }
-        public int Attack { get; set; }
-        public int Defense { get; set; }
-        public string Abilities { get; set; }
-        public int MyHealthChange { get; set; }
-        public int OpponentHealthChange { get; set; }
-        public int CardDraw { get; set; }
-    }
-
-    public static class Util
-    {
-        public static Gambler ParseGambler(string input)
+        public static Gambler Gambler(string input)
         {
             string[] inputs = input.Split(' ');
             var gambler = new Gambler
@@ -104,18 +87,18 @@ namespace CCG
             return gambler;
         }
 
-        public static Card ParseCard(string input)
+        public static Card Card(string input)
         {
             string[] inputs = input.Split(' ');
             var card = new Card
             {
                 CardNumber = int.Parse(inputs[0]),
                 InstanceId = int.Parse(inputs[1]),
-                Location = int.Parse(inputs[2]),
-                CardType = int.Parse(inputs[3]),
+                Location = (BoardLocation)int.Parse(inputs[2]),
+                CardType = (CardType)int.Parse(inputs[3]),
                 Cost = int.Parse(inputs[4]),
-                Attack = int.Parse(inputs[5]),
-                Defense = int.Parse(inputs[6]),
+                AttackValue = int.Parse(inputs[5]),
+                DefenseValue = int.Parse(inputs[6]),
                 Abilities = inputs[7],
                 MyHealthChange = int.Parse(inputs[8]),
                 OpponentHealthChange = int.Parse(inputs[9]),
@@ -123,70 +106,70 @@ namespace CCG
             };
             return card;
         }
+    }
+
+    public static class DraftPhase
+    {
+        /// <summary>
+        /// Represent a turn in the draft phase, 
+        /// basically selects the card that we should pick
+        /// </summary>
+        public static string GetBestCard(List<Card> picks, int[] curve)
+        {
+            const int possiblePickCount = 3;
+            double maxValue = -10000;
+            int bestPickIndex = 0;
+            for (int i = 0; i < possiblePickCount; i++)
+            {
+                double cardValue = GetValue(picks[i], curve);
+                if (cardValue >= maxValue)
+                {
+                    maxValue = cardValue;
+                    bestPickIndex = i;
+                }
+                //Console.Error.WriteLine(cardList[i].cardNumber + " " + cardValue);
+            }
+            CurveAdd(picks[bestPickIndex].Cost, curve);
+            return "PICK " + bestPickIndex;
+        }
 
         public static double GetValue(Card card, int[] curve)
         {
             //TODO: improve red and blue item values
             double value = 0;
-            value += Math.Abs(card.Attack);
-            value += Math.Abs(card.Defense);
+            value += Math.Abs(card.AttackValue);
+            value += Math.Abs(card.DefenseValue);
             value += card.CardDraw;
-            value += card.Abilities.Replace("-", "").Replace("L", "L2").Replace("W", "W2").Length * 0.5;
-            value += card.MyHealthChange / 3;
-            value -= card.OpponentHealthChange / 3;
+            value += card.Abilities.Replace("-", "").Replace("C", "C2").Replace("W", "W2").Length * 0.5;
+            value += (double)card.MyHealthChange / 3;
+            value -= (double)card.OpponentHealthChange / 3;
             value -= card.Cost * 2;
             //marginal penalty
-            if (card.Cost == 0 || card.Attack == 0)
+            if (card.Cost == 0 || card.AttackValue == 0)
             {
                 value -= 2;
             }
             //nonboard penalty
-            if (card.CardType == 2 || card.CardType == 3)
+            if (card.CardType == CardType.RedItem ||
+                card.CardType == CardType.BlueItem)
             {
                 value -= 1;
             }
-            //balance penalty, nerf decimate
-            if (card.CardNumber == 155)
+            //balance penalty, nerf card "Decimate"
+            if (card.CardNumber == 151)
             {
                 value -= 94;
             }
-            if (GetCurveFit(card.Cost, curve))
+            if (HaveEnoughInManaCurve(card.Cost, curve))
             {
-                --value;
-            }
-            if (card.Attack - card.Defense >= 2)
-            {
-                value += 0.01;
-            }
-            if (-card.Attack + card.Defense >= 2)
-            {
-                value -= 0.01;
+                value -= 1;
             }
 
             return value;
         }
 
-        public static void CurveAdd(int cost, int[] curve)
+        public static bool HaveEnoughInManaCurve(int cost, int[] curve)
         {
-            if (cost > 1 && cost < 7)
-            {
-                --curve[cost - 1];
-
-            }
-            if (cost <= 1)
-            {
-                --curve[0];
-            }
-            if (cost > 6)
-            {
-                --curve[6];
-            }
-
-        }
-
-        public static bool GetCurveFit(int cost, int[] curve)
-        {
-
             if (cost > 1 && cost < 7 && curve[cost - 1] <= 0)
             {
                 return true;
@@ -200,53 +183,22 @@ namespace CCG
                 return true;
             }
             return false;
-
         }
 
-        public static string GetBestCard(List<Card> myHand, int[] curve)
+        public static void CurveAdd(int cost, int[] curve)
         {
-            double maxValue = -10000;
-            int max = 0;
-            for (int i = 0; i < 3; i++)
-            {
-                double cardValue = GetValue(myHand[i], curve);
-                if (cardValue >= maxValue)
-                {
-                    maxValue = cardValue;
-                    max = i;
-                }
-                //Console.Error.WriteLine(cardList[i].cardNumber + " " + cardValue);
-            }
-            CurveAdd(myHand[max].Cost, curve);
-            return "PICK " + max;
+            int place = (cost - 1).Clamp(0, 6);
+            curve[place] -= 1;
         }
+    }
 
-        public static Card GetMostExpensiveCard(int mana, int myBoardCount, int enemyBoardCount, List<Card> myHand)
-        {
-            foreach (Card card in myHand)
-            {
-                //Console.Error.WriteLine(card.cost);
-                int maxCost = 0;
-                if (card.Cost <= mana)
-                {
-                    if (card.CardType == 0 && myBoardCount < 6 || card.CardType == 3 || card.CardType == 1 && myBoardCount != 0 || card.CardType == 2 && enemyBoardCount != 0)
-                    {
-                        if (maxCost <= card.Cost)
-                        {
-                            maxCost = card.Cost;
-                            return card;
-                        }
-                    }
-                }
-            }
-            return null;
-        }
-
+    public static class BattlePhase
+    {
         public static string GetBestSummon(int turn, List<Card> enemyBoard, List<Card> myHand, List<Card> myBoard)
         {
             int mana = turn - 30;
             int boardCount = myBoard.Count;
-            int enemyBoardCount = myBoard.Count;
+            int enemyBoardCount = enemyBoard.Count;
             var playList = new List<int>();
             var card = new Card();
             string command = "";
@@ -258,7 +210,7 @@ namespace CCG
                     break;
                 }
                 string target = "";
-                if (card.CardType == 1)
+                if (card.CardType == CardType.GreenItem)
                 {
                     if (myBoard.Count != 0)
                     {
@@ -270,7 +222,8 @@ namespace CCG
                     }
                 }
                 //TODO: improve debuff items
-                if (card.CardType == 2 || card.CardType == 3 && card.Defense < 0)
+                if (card.CardType == CardType.RedItem || 
+                    (card.CardType == CardType.BlueItem && card.DefenseValue < 0))
                 {
                     if (enemyBoard.Count == 0)
                     {
@@ -279,12 +232,13 @@ namespace CCG
                     else
                     {
                         target += enemyBoard[0].InstanceId;
-                        if (enemyBoard[0].Defense <= -card.Defense)
+                        if (enemyBoard[0].DefenseValue <= -card.DefenseValue)
                         {
                             enemyBoard.RemoveAt(0);
                         }
                     }
                 }
+
                 if (card.CardType == 0)
                 {
                     ++boardCount;
@@ -306,6 +260,30 @@ namespace CCG
             return command;
         }
 
+        public static Card GetMostExpensiveCard(int mana, int myBoardCount, int enemyBoardCount, List<Card> myHand)
+        {
+            foreach (Card card in myHand)
+            {
+                //Console.Error.WriteLine(card.cost);
+                int maxCost = 0;
+                if (card.Cost <= mana)
+                {
+                    if ((card.CardType == 0 && myBoardCount < 6) || 
+                        card.CardType == CardType.BlueItem || 
+                        (card.CardType == CardType.GreenItem && myBoardCount != 0) || 
+                        (card.CardType == CardType.RedItem && enemyBoardCount != 0))
+                    {
+                        if (maxCost <= card.Cost)
+                        {
+                            maxCost = card.Cost;
+                            return card;
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
         public static string Attack(List<Card> enemyBoard, List<Card> myBoard)
         {
             string attacks = "";
@@ -324,13 +302,13 @@ namespace CCG
                     attacks += "ATTACK " + card.InstanceId + " " + enemyTreat[0].InstanceId + ";";
                     if (card.Abilities.Contains("L"))
                     {
-                        enemyTreat[0].Defense = 0;
+                        enemyTreat[0].DefenseValue = 0;
                     }
                     else
                     {
-                        enemyTreat[0].Defense -= card.Attack;
+                        enemyTreat[0].DefenseValue -= card.AttackValue;
                     }
-                    if (enemyTreat[0].Defense <= 0)
+                    if (enemyTreat[0].DefenseValue <= 0)
                     {
                         enemyTreat.RemoveAt(0);
                     }
@@ -344,4 +322,59 @@ namespace CCG
             return attacks;
         }
     }
+
+    public class Gambler
+    {
+        public int PlayerHealth { get; set; }
+        public int PlayerMana { get; set; }
+        public int PlayerDeck { get; set; }
+        public int PlayerRune { get; set; }
+        public int Identity { get; set; }
+    }
+
+    public class Card
+    {
+        public int CardNumber { get; set; }
+        public int InstanceId { get; set; }
+        public BoardLocation Location { get; set; }
+        public CardType CardType { get; set; }
+        public int Cost { get; set; }
+        public int AttackValue { get; set; }
+        public int DefenseValue { get; set; }
+        public string Abilities { get; set; }
+        public int MyHealthChange { get; set; }
+        public int OpponentHealthChange { get; set; }
+        public int CardDraw { get; set; }
+    }
+
+    #region enums
+    public enum BoardLocation
+    {
+        EnemySide = -1,
+        InHand = 0,
+        PlayerSide = 1
+    }
+
+    public enum CardType
+    {
+        Creature = 0,
+        GreenItem = 1,
+        RedItem = 2,
+        BlueItem = 3
+    }
+    #endregion
+
+    #region utilities
+
+    static class Extensions
+    {
+        public static T Clamp<T>(this T val, T min, T max) where T : IComparable<T>
+        {
+            if (val.CompareTo(min) < 0) return min;
+            else if (val.CompareTo(max) > 0) return max;
+            else return val;
+        }
+    }
+
+    #endregion
 }
