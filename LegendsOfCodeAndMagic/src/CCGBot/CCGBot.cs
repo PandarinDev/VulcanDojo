@@ -227,9 +227,9 @@ namespace CCG
         public static Card GetMostExpensiveCard(int mana, int myBoardCount, int enemyBoardCount, List<Card> myHand)
         {
             Card cardToPlay = null;
+            int maxCost = 0;
             foreach (Card card in myHand)
             {
-                int maxCost = 0;
                 if (card.Cost <= mana)
                 {
                     if ((card.CardType == CardType.Creature && myBoardCount < 6) || 
