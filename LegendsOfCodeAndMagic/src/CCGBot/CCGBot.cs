@@ -173,7 +173,8 @@ namespace CCG
                 {
                     break;
                 }
-                string target = "";
+
+                int target = 0;
                 if (card.CardType == CardType.GreenItem)
                 {
                     if (myBoard.Count != 0)
@@ -182,11 +183,10 @@ namespace CCG
                     }
                     else
                     {
-                        target = (command.Split(' '))[1];
+                        Console.Error.WriteLine("Error: Tried to cast green item when I dont have a minion");
                     }
                 }
-                //TODO: improve debuff items
-                if (card.CardType == CardType.RedItem || 
+                else if (card.CardType == CardType.RedItem || 
                     (card.CardType == CardType.BlueItem && card.DefenseValue < 0))
                 {
                     if (enemyBoard.Count == 0)
@@ -202,10 +202,9 @@ namespace CCG
                         }
                     }
                 }
-
-                if (card.CardType == 0)
+                else if (card.CardType == CardType.Creature)
                 {
-                    ++boardCount;
+                    boardCount += 1;
                     if (card.Abilities.Contains("C"))
                     {
                         myBoard.Add(card);
@@ -216,7 +215,8 @@ namespace CCG
                 {
                     command += "USE " + card.InstanceId + " " + target + ";";
                 }
-                target = "";
+
+                target = 0;
                 mana -= card.Cost;
                 myHand.Remove(card);
             }
@@ -226,13 +226,13 @@ namespace CCG
 
         public static Card GetMostExpensiveCard(int mana, int myBoardCount, int enemyBoardCount, List<Card> myHand)
         {
+            Card cardToPlay = null;
             foreach (Card card in myHand)
             {
-                //Console.Error.WriteLine(card.cost);
                 int maxCost = 0;
                 if (card.Cost <= mana)
                 {
-                    if ((card.CardType == 0 && myBoardCount < 6) || 
+                    if ((card.CardType == CardType.Creature && myBoardCount < 6) || 
                         card.CardType == CardType.BlueItem || 
                         (card.CardType == CardType.GreenItem && myBoardCount != 0) || 
                         (card.CardType == CardType.RedItem && enemyBoardCount != 0))
@@ -240,12 +240,12 @@ namespace CCG
                         if (maxCost <= card.Cost)
                         {
                             maxCost = card.Cost;
-                            return card;
+                            cardToPlay = card;
                         }
                     }
                 }
             }
-            return null;
+            return cardToPlay;
         }
 
         public static string Attack(List<Card> enemyBoard, List<Card> myBoard)
@@ -263,16 +263,21 @@ namespace CCG
             {
                 if (enemyTreat.Count != 0)
                 {
-                    attacks += "ATTACK " + card.InstanceId + " " + enemyTreat[0].InstanceId + ";";
-                    if (card.Abilities.Contains("L"))
+                    Card enemyCard = enemyTreat[0];
+                    attacks += "ATTACK " + card.InstanceId + " " + enemyCard.InstanceId + ";";
+                    if (enemyCard.Abilities.Contains("W"))
                     {
-                        enemyTreat[0].DefenseValue = 0;
+                        enemyCard.Abilities = enemyCard.Abilities.Replace("W", "");
+                    }
+                    else if (card.Abilities.Contains("L"))
+                    {
+                        enemyCard.DefenseValue = 0;
                     }
                     else
                     {
-                        enemyTreat[0].DefenseValue -= card.AttackValue;
+                        enemyCard.DefenseValue -= card.AttackValue;
                     }
-                    if (enemyTreat[0].DefenseValue <= 0)
+                    if (enemyCard.DefenseValue <= 0)
                     {
                         enemyTreat.RemoveAt(0);
                     }
