@@ -72,42 +72,6 @@ namespace CCG
         }
     }
 
-    public static class Parse
-    {
-        public static Gambler Gambler(string input)
-        {
-            string[] inputs = input.Split(' ');
-            var gambler = new Gambler
-            {
-                PlayerHealth = int.Parse(inputs[0]),
-                PlayerMana = int.Parse(inputs[1]),
-                PlayerDeck = int.Parse(inputs[2]),
-                PlayerRune = int.Parse(inputs[3])
-            };
-            return gambler;
-        }
-
-        public static Card Card(string input)
-        {
-            string[] inputs = input.Split(' ');
-            var card = new Card
-            {
-                CardNumber = int.Parse(inputs[0]),
-                InstanceId = int.Parse(inputs[1]),
-                Location = (BoardLocation)int.Parse(inputs[2]),
-                CardType = (CardType)int.Parse(inputs[3]),
-                Cost = int.Parse(inputs[4]),
-                AttackValue = int.Parse(inputs[5]),
-                DefenseValue = int.Parse(inputs[6]),
-                Abilities = inputs[7],
-                MyHealthChange = int.Parse(inputs[8]),
-                OpponentHealthChange = int.Parse(inputs[9]),
-                CardDraw = int.Parse(inputs[10])
-            };
-            return card;
-        }
-    }
-
     public static class DraftPhase
     {
         /// <summary>
@@ -320,6 +284,42 @@ namespace CCG
             }
 
             return attacks;
+        }
+    }
+
+    public static class Parse
+    {
+        public static Gambler Gambler(string input)
+        {
+            string[] inputs = input.Split(' ');
+            var gambler = new Gambler
+            {
+                PlayerHealth = int.Parse(inputs[0]),
+                PlayerMana = int.Parse(inputs[1]),
+                PlayerDeck = int.Parse(inputs[2]),
+                PlayerRune = int.Parse(inputs[3])
+            };
+            return gambler;
+        }
+
+        public static Card Card(string input)
+        {
+            string[] inputs = input.Split(' ');
+            var card = new Card
+            {
+                CardNumber = int.Parse(inputs[0]),
+                InstanceId = int.Parse(inputs[1]),
+                Location = (BoardLocation)int.Parse(inputs[2]),
+                CardType = (CardType)int.Parse(inputs[3]),
+                Cost = int.Parse(inputs[4]),
+                AttackValue = int.Parse(inputs[5]),
+                DefenseValue = int.Parse(inputs[6]),
+                Abilities = inputs[7],
+                MyHealthChange = int.Parse(inputs[8]),
+                OpponentHealthChange = int.Parse(inputs[9]),
+                CardDraw = int.Parse(inputs[10])
+            };
+            return card;
         }
     }
 
