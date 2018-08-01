@@ -202,7 +202,8 @@ namespace CCG
                         }
                     }
                 }
-                else if (card.CardType == CardType.Creature)
+
+                if (card.CardType == CardType.Creature)
                 {
                     boardCount += 1;
                     if (card.Abilities.Contains("C"))
@@ -234,11 +235,12 @@ namespace CCG
                 {
                     if ((card.CardType == CardType.Creature && myBoardCount < 6) || 
                         card.CardType == CardType.BlueItem || 
-                        (card.CardType == CardType.GreenItem && myBoardCount != 0) || 
-                        (card.CardType == CardType.RedItem && enemyBoardCount != 0))
+                        (card.CardType == CardType.GreenItem && myBoardCount > 0) || 
+                        (card.CardType == CardType.RedItem && enemyBoardCount > 0))
                     {
                         if (maxCost <= card.Cost)
                         {
+                            Console.Error.WriteLine($"Considering to play {card.InstanceId}");
                             maxCost = card.Cost;
                             cardToPlay = card;
                         }
