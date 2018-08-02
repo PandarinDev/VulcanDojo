@@ -160,7 +160,7 @@ namespace CCG
     {
         public static string GetBestSummon(int turn, List<Card> enemyBoard, List<Card> myHand, List<Card> myBoard)
         {
-            int mana = turn - 30;
+            int mana = (turn - 30).Clamp(0, 12);
             int boardCount = myBoard.Count;
             int enemyBoardCount = enemyBoard.Count;
             var playList = new List<int>();
