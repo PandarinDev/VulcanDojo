@@ -8,10 +8,28 @@ import java.util.stream.Collectors;
 
 /**
  * CodinGame requires the class to be named 'Player' and to be package-private.
- * This implementation is for contending in Wood 3 League. The algorithm is not
- * prepared for the advanced gameplay elements in above leagues.
  */
 class Player {
+    
+    // Constants
+    private static final int BOARD_SIZE = 6;
+    // Stat factors
+    private static final float ATTACK_FACTOR = 1.0f;
+    private static final float DEFENSE_FACTOR = 0.8f;
+    private static final float PLAYER_HP_FACTOR = 0.8f;
+    private static final float ENEMY_HP_FACTOR = 1.0f;
+    private static final float CARD_DRAW_FACTOR = 0.5f;
+    // Ability factors
+    private static final float BREAKTHROUGH_FACTOR = 0.15f;
+    private static final float CHARGE_FACTOR = 0.5f;
+    private static final float DRAIN_FACTOR = 0.075f;
+    private static final float GUARD_FACTOR = 0.2f;
+    private static final float LETHAL_FACTOR = 2.0f;
+    private static final float WARD_FACTOR = 1.0f;
+    // Curve factors
+    private static final float CURVE_MEAN = 3.0f;
+    private static final float CURVE_VARIANCE = 3.0f;
+    private static final float CURVE_VALUE = 5.0f;
     
     public static void main(String[] args) {
         new Player().start();
@@ -51,10 +69,15 @@ class Player {
             doAction("PICK " + num);
         }
         
-        public void summonCreature(Card card) {
+        public void summonCreature(Card card, GameState state) {
             if (card.getType() != CardType.CREATURE) {
                 throw new IllegalArgumentException("Cannot summon non-creature card.");
             }
+            if (state.isMyBoardFull()) {
+                throw new IllegalStateException("Cannot summon creature, my board is already full.");
+            }
+            card.setLocation(CardLocation.MY_SIDE);
+            card.flagSummonedThisTurn();
             doAction("SUMMON " + card.getInstanceId());
         }
         
@@ -65,6 +88,10 @@ class Player {
             if (target.getType() != CardType.CREATURE) {
                 throw new IllegalArgumentException("Cannot attack non-creature card.");
             }
+            if (!attacker.canAttack()) {
+                throw new IllegalArgumentException("This creature cannot attack now.");
+            }
+            attacker.flagAttackedThisTurn();
             doAction("ATTACK " + attacker.getInstanceId() + " " + target.getInstanceId());
         }
         
@@ -159,7 +186,7 @@ class Player {
         
         private final int number;
         private final int instanceId;
-        private final CardLocation location;
+        private CardLocation location;
         private final CardType type;
         private final int cost;
         private final int attack;
@@ -168,7 +195,9 @@ class Player {
         private final int myHealthChange;
         private final int opponentHealthChange;
         private final int cardDraw;
-
+        private boolean attackedThisTurn = false;
+        private boolean summonedThisTurn = false;
+        
         public Card(
                 int number, int instanceId, CardLocation location, CardType type,
                 int cost, int attack, int defense, Set<CardAbility> abilities,
@@ -184,6 +213,25 @@ class Player {
             this.myHealthChange = healthChange;
             this.opponentHealthChange = opponentHealthChange;
             this.cardDraw = cardDraw;
+        }
+        
+        public void flagAttackedThisTurn() {
+            attackedThisTurn = true;
+        }
+        
+        public void flagSummonedThisTurn() {
+            summonedThisTurn = true;
+        }
+        
+        public boolean canAttack() {
+            return
+                    location == CardLocation.MY_SIDE &&
+                    !hasAttackedThisTurn() &&
+                    (!wasSummonedThisTurn() || abilities.contains(CardAbility.CHARGE));
+        }
+        
+        public void setLocation(CardLocation location) {
+            this.location = location;
         }
         
         public int getNumber() {
@@ -230,6 +278,14 @@ class Player {
             return cardDraw;
         }
         
+        public boolean hasAttackedThisTurn() {
+            return attackedThisTurn;
+        }
+        
+        public boolean wasSummonedThisTurn() {
+            return summonedThisTurn;
+        }
+        
     }
     
     public class GameState {
@@ -262,6 +318,10 @@ class Player {
             return getCardsOnLocation(CardLocation.OPPONENTS_SIDE);
         }
         
+        public boolean isMyBoardFull() {
+            return getCardsOnMySide().size() >= BOARD_SIZE;
+        }
+        
         private List<Card> getCardsOnLocation(CardLocation location) {
             return cards
                     .stream()
@@ -277,12 +337,6 @@ class Player {
     
     public class DraftCardComparator implements Comparator<Card> {
         
-        private final List<Card> selectedCards;
-        
-        public DraftCardComparator(List<Card> selectedCards) {
-            this.selectedCards = selectedCards;
-        }
-        
         @Override
         public int compare(Card first, Card second) {
             float firstValue = calculateDraftValue(first);
@@ -291,13 +345,16 @@ class Player {
         }
         
         private float calculateDraftValue(Card card) {
-            int attack = card.getAttack();
-            int defense = card.getDefense();
-            float value = attack + defense;
+            float attack = Math.abs(card.getAttack()) * ATTACK_FACTOR;
+            float defense = Math.abs(card.getDefense()) * DEFENSE_FACTOR;
+            float myHealth = card.getMyHealthChange() * PLAYER_HP_FACTOR;
+            float opponentHealth = card.getOpponentHealthChange() * ENEMY_HP_FACTOR;
+            float cardDraw = card.getCardDraw() * CARD_DRAW_FACTOR;
+            float value = attack + defense + myHealth - opponentHealth + cardDraw;
             for (CardAbility ability : card.getAbilities()) {
-                value += calculateAbilityValue(ability, attack, defense);
+                value += calculateAbilityValue(ability, card.getAttack(), card.getDefense());
             }
-            value += calculateCurveValue(card, selectedCards);
+            value *= calculateCurveValue(card);
             return value;
         }
         
@@ -307,9 +364,7 @@ class Player {
     
     public class DraftingLogic implements GameplayLogic {
         
-        private final List<Card> selectedCards = new ArrayList<>();
-        private final DraftCardComparator comparator = new DraftCardComparator(
-                selectedCards);
+        private final DraftCardComparator comparator = new DraftCardComparator();
         
         @Override
         public void playTurn(Gambler me, Gambler opponent, GameState gameState) {
@@ -317,20 +372,86 @@ class Player {
             Card selectedCard = cards.stream().max(comparator).get();
             ActionIssuer issuer = new ActionIssuer();
             issuer.pick(cards.indexOf(selectedCard));
-            selectedCards.add(selectedCard);
             issuer.executeActions();
         }
         
     }
     
+    /**
+     * Currently this is a simple aggressive game logic that is used
+     * before decision trees are implemented. Logic is simply:
+     * 1. Play highest draft value creatures from hand.
+     * 2. a) If we can attack face: Attack face.
+     * 2. b) Otherwise: Attack guard creature with lowest HP.
+     * 
+     * This logic is currently incapable of using items.
+     */
     public class SimplePlayLogic implements GameplayLogic {
-
+        
+        private final DraftCardComparator comparator = new DraftCardComparator();
+        
         @Override
         public void playTurn(Gambler me, Gambler opponent, GameState gameState) {
             ActionIssuer issuer = new ActionIssuer();
-            // Currently we just pass until we die
-            issuer.pass();
+            // Phase#1: Play cards with the highest attack value
+            int mana = me.getMana();
+            List<Card> cardsInHand = gameState.getCardsInMyHand();
+            List<Card> playableCards = getCreatures(getPlayableCards(mana, cardsInHand));
+            while (!gameState.isMyBoardFull() && !playableCards.isEmpty()) {
+                Card bestCard = getHighestDraftValueCard(playableCards);
+                issuer.summonCreature(bestCard, gameState);
+                cardsInHand.remove(bestCard);
+                mana -= bestCard.getCost();
+                playableCards = getCreatures(getPlayableCards(mana, cardsInHand));
+            }
+            // Phase#2: Attack face if we can, otherwise attack guard creature
+            List<Card> attackers = getCreaturesThatCanAttack(gameState.getCardsOnMySide());
+            for (Card attacker : attackers) {
+                List<Card> enemyGuards = getGuardCreatures(gameState.getCardsOnOpponentsSide());
+                if (!enemyGuards.isEmpty()) {
+                    Card leastHpGuard = enemyGuards
+                            .stream()
+                            .min((c1, c2) -> Integer.compare(c1.getDefense(), c2.getDefense()))
+                            .get();
+                    issuer.attackCreature(attacker, leastHpGuard);
+                }
+                else {
+                    issuer.attackFace(attacker);
+                }
+            }
             issuer.executeActions();
+        }
+        
+        private List<Card> getPlayableCards(int mana, List<Card> cardsInHand) {
+            return cardsInHand
+                    .stream().
+                    filter((c) -> c.getCost() <= mana)
+                    .collect(Collectors.toList());
+        }
+        
+        private List<Card> getCreatures(List<Card> cards) {
+            return cards
+                    .stream()
+                    .filter((c) -> c.getType() == CardType.CREATURE)
+                    .collect(Collectors.toList());
+        }
+        
+        private List<Card> getCreaturesThatCanAttack(List<Card> cards) {
+            return cards
+                    .stream()
+                    .filter((c) -> c.canAttack())
+                    .collect(Collectors.toList());
+        }
+        
+        private List<Card> getGuardCreatures(List<Card> cards) {
+            return cards
+                    .stream()
+                    .filter((c) -> c.getAbilities().contains(CardAbility.GUARD))
+                    .collect(Collectors.toList());
+        }
+        
+        private Card getHighestDraftValueCard(List<Card> cards) {
+            return cards.stream().max(comparator).get();
         }
         
     }
@@ -425,17 +546,17 @@ class Player {
     public float calculateAbilityValue(CardAbility ability, int attack, int defense) {
         switch (ability) {
             case BREAKTHROUGH:
-                return 0.3f * attack;
+                return BREAKTHROUGH_FACTOR * attack;
             case CHARGE:
-                return 1.0f * attack;
+                return CHARGE_FACTOR * attack;
             case DRAIN:
-                return 0.15f * attack;
+                return DRAIN_FACTOR * attack;
             case GUARD:
-                return 0.8f * defense;
+                return GUARD_FACTOR * defense;
             case LETHAL:
-                return 3.0f;
+                return LETHAL_FACTOR;
             case WARD:
-                return 1.0f / defense;
+                return WARD_FACTOR;
             default:
                 throw new IllegalArgumentException("Ability is not handled by method.");
         }
@@ -446,17 +567,31 @@ class Player {
      * The target curve is subject to change and it could be a
      * good idea to experiment with different values later on.
      * @param card The card that you want to evaluate.
-     * @param selectedCards The cards that you have drafted so far.
      * @return How much the card compliments the curve.
      */
-    public float calculateCurveValue(Card card, List<Card> selectedCards) {
-        final float targetCurve = 3.0f;
-        int totalCost = selectedCards
-                .stream()
-                .mapToInt((c) -> c.getCost())
-                .sum();
-        float currentCurve = ((float) totalCost) / selectedCards.size();
-        return (1.0f / Math.abs(targetCurve - currentCurve)) * 4.0f;
+    public float calculateCurveValue(Card card) {
+        return (float) generalGaussian(
+                card.getCost(), CURVE_MEAN, CURVE_VARIANCE) * CURVE_VALUE;
+    }
+    
+    /**
+     * Implements the standard Gaussian distribution.
+     * @param x The input to the standard Gaussian function.
+     * @return The value of the standard Gaussian function at x.
+     */
+    public static double standardGaussian(double x) {
+        return Math.exp(-x*x / 2) / Math.sqrt(2 * Math.PI);
+    }
+    
+    /**
+     * Implements the general Gaussian distribution with mean and variance.
+     * @param x The input to the standard Gaussian distribution.
+     * @param mu The mean of the distribution.
+     * @param sigma The variance of the distribution.
+     * @return The value of the general Gaussian function at x with respect to mu and sigma.
+     */
+    public static double generalGaussian(double x, double mu, double sigma) {
+        return standardGaussian((x - mu) / sigma) / sigma;
     }
     
 }
