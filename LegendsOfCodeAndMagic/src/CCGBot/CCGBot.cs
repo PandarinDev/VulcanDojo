@@ -298,12 +298,24 @@ namespace CCG
     {
         public static void Attack(Card attacker, Card defender)
         {
-            defender.DefenseValue -= attacker.AttackValue;
+            HalfAttack(attacker, defender);
+
             if (!defender.DidAttack)
             {
-                attacker.DefenseValue -= defender.AttackValue;
-                defender.DidAttack = true;
+                HalfAttack(defender, attacker);
             }
+        }
+
+        private static void HalfAttack(Card attacker, Card defender)
+        {
+            if (attacker.AttackValue > 0)
+            {
+                if (defender.HasWard())
+                    defender.RemoveWard();
+                else
+                    defender.DefenseValue -= attacker.AttackValue;
+            }
+            attacker.DidAttack = true;
         }
     }
 
@@ -367,6 +379,9 @@ namespace CCG
         public int CardDraw { get; set; }
 
         public bool DidAttack { get; set; } = false;
+
+        public bool HasWard() => Abilities.Contains("W");
+        public void RemoveWard() => Abilities = Abilities.Replace("W", "");
     }
 
     #region enums
