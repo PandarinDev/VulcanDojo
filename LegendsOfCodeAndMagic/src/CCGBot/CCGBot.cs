@@ -294,6 +294,19 @@ namespace CCG
         }
     }
 
+    public static class Simulator
+    {
+        public static void Attack(Card attacker, Card defender)
+        {
+            defender.DefenseValue -= attacker.AttackValue;
+            if (!defender.DidAttack)
+            {
+                attacker.DefenseValue -= defender.AttackValue;
+                defender.DidAttack = true;
+            }
+        }
+    }
+
     public static class Parse
     {
         public static Gambler Gambler(string input)
@@ -311,7 +324,7 @@ namespace CCG
 
         public static Card Card(string input)
         {
-            string[] inputs = input.Split(' ');
+            string[] inputs = input.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             var card = new Card
             {
                 CardNumber = int.Parse(inputs[0]),
@@ -352,6 +365,8 @@ namespace CCG
         public int MyHealthChange { get; set; }
         public int OpponentHealthChange { get; set; }
         public int CardDraw { get; set; }
+
+        public bool DidAttack { get; set; } = false;
     }
 
     #region enums
