@@ -134,5 +134,30 @@ namespace CCGBot.Tests
             Assert.IsTrue(attacker1.HasWard());
             Assert.AreEqual(1, defender0.DefenseValue);
         }
+
+        [TestMethod]
+        public void SimulateWithLethalAttack()
+        {
+            var attacker1 = Parse.Card("120 1  1 1 2 1 2 ----L- 0 0 0");
+            var defender0 = Parse.Card("120 1  1 1 2 1 2 ------ 0 0 0");
+
+            Simulator.Attack(attacker1, defender0);
+
+            Assert.AreEqual(1, attacker1.DefenseValue);
+            Assert.AreEqual(0, defender0.DefenseValue);
+        }
+
+        [TestMethod]
+        public void SimulateWardWithLethalAttack()
+        {
+            var attacker1 = Parse.Card("120 1  1 1 2 1 2 ----L- 0 0 0");
+            var defender0 = Parse.Card("120 1  1 1 2 1 2 -----W 0 0 0");
+
+            Simulator.Attack(attacker1, defender0);
+
+            Assert.AreEqual(1, attacker1.DefenseValue);
+            Assert.AreEqual(2, defender0.DefenseValue);
+            Assert.IsFalse(defender0.HasWard());
+        }
     }
 }

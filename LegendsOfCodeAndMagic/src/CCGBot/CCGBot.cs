@@ -312,6 +312,10 @@ namespace CCG
             {
                 if (defender.HasWard())
                     defender.RemoveWard();
+                else if (attacker.HasLethal())
+                {
+                    defender.DefenseValue = 0;
+                }
                 else
                     defender.DefenseValue -= attacker.AttackValue;
             }
@@ -381,7 +385,29 @@ namespace CCG
         public bool DidAttack { get; set; } = false;
 
         public bool HasWard() => Abilities.Contains("W");
+        public bool HasLethal() => Abilities.Contains("L");
         public void RemoveWard() => Abilities = Abilities.Replace("W", "");
+
+        public override string ToString()
+        {
+            return $"{CardNumber} {InstanceId} {Location} {CardType} {Cost} {AttackValue} {DefenseValue} {Abilities} {MyHealthChange} {OpponentHealthChange} {CardDraw}";
+        }
+
+        public override bool Equals(object o)
+        {
+            var c = o as Card;
+            if (c != null)
+            {
+                bool result = CardNumber == c.CardNumber && InstanceId == c.InstanceId &&
+                Location == c.Location && CardType == c.CardType &&
+                Cost == c.Cost && AttackValue == c.AttackValue &&
+                DefenseValue == c.DefenseValue && Abilities == c.Abilities &&
+                MyHealthChange == c.MyHealthChange && OpponentHealthChange == c.OpponentHealthChange &&
+                CardDraw == c.CardDraw;
+                return result;
+    }
+            return false;
+        }
     }
 
     #region enums
