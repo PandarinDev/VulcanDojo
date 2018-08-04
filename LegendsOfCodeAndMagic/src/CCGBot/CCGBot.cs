@@ -136,30 +136,32 @@ namespace CCG
                 return seq.ToString();
             }
 
-            public static ActionSequence DecideOnBestActionSequence(GameState gs)
+            public static ActionSequence DecideOnBestActionSequence(GameState initialGameSate)
             {
                 var possibleStates = new Queue<Tuple<GameState, ActionSequence>>();
 
                 double bestValue = 0.0;
                 ActionSequence bestSeq = new ActionSequence();
-                possibleStates.Enqueue(new Tuple<GameState, ActionSequence>(gs, bestSeq));
+                possibleStates.Enqueue(new Tuple<GameState, ActionSequence>(initialGameSate, bestSeq));
 
                 while (possibleStates.Count > 0)
                 {
                     var state = possibleStates.Dequeue();
+                    GameState gs = state.Item1;
+                    ActionSequence toState = state.Item2;
 
                     // could put this to separate step
-                    double value = EvaluateGameState(state.Item1);
+                    double value = EvaluateGameState(gs);
                     if(value > bestValue)
                     {
-                        bestSeq = state.Item2;
+                        bestSeq = toState;
                     }
 
                     var actions = GetPossibleActions(gs);
                     foreach (var action in actions)
                     {
                         GameState actionGameState = SimulateAction(gs, action);
-                        possibleStates.Enqueue(new Tuple<GameState, ActionSequence>(actionGameState, state.Item2.Extended(action)));
+                        possibleStates.Enqueue(new Tuple<GameState, ActionSequence>(actionGameState, toState.Extended(action)));
                     }
                 }
 
@@ -168,10 +170,12 @@ namespace CCG
 
             public static List<GameAction> GetPossibleActions(GameState gs)
             {
-                return new List<GameAction>()
+                var result = new List<GameAction>()
                 {
-                    new GameAction()
+                    new GameAction() // Doing nothing is always a valid action
                 };
+
+                return result;
             }
 
             public static GameState SimulateAction(GameState gs, GameAction action)
@@ -475,12 +479,14 @@ namespace CCG
         }
 
         /// <summary>
-        /// Gives back a deepcopy
+        /// Gives back a shallow copy of actions
         /// </summary>
         public ActionSequence Clone()
         {
-            ActionSequence c = new ActionSequence();
-            c.Actions = new List<GameAction>(Actions);
+            ActionSequence c = new ActionSequence
+            {
+                Actions = new List<GameAction>(Actions)
+            };
             return c;
         }
     }
