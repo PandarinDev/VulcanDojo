@@ -32,7 +32,7 @@ namespace CCG.Tests
             List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
 
             Assert.AreEqual(1, actions.Count);
-            Assert.AreEqual(ActionType.EmptyAction, actions[0].Type);
+            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
         }
 
 

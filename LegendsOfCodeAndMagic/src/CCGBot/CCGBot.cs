@@ -129,23 +129,42 @@ namespace CCG
     {
         public static class GraphSolver
         {
+
             public static string ProcessTurn(GameState gs)
             {
+
                 ActionSequence seq = DecideOnBestActionSequence(gs);
                 return seq.ToString();
             }
 
             public static ActionSequence DecideOnBestActionSequence(GameState gs)
             {
-                var actions = GetPossibleActions(gs);
+                var possibleStates = new Queue<Tuple<GameState, ActionSequence>>();
 
-                foreach (var action in actions)
+                double bestValue = 0.0;
+                ActionSequence bestSeq = new ActionSequence();
+                possibleStates.Enqueue(new Tuple<GameState, ActionSequence>(gs, bestSeq));
+
+                while (possibleStates.Count > 0)
                 {
-                    GameState actionGameState = SimulateAction(gs, action);
-                    double value = EvaluateGameState(actionGameState);
+                    var state = possibleStates.Dequeue();
+
+                    // could put this to separate step
+                    double value = EvaluateGameState(state.Item1);
+                    if(value > bestValue)
+                    {
+                        bestSeq = state.Item2;
+                    }
+
+                    var actions = GetPossibleActions(gs);
+                    foreach (var action in actions)
+                    {
+                        GameState actionGameState = SimulateAction(gs, action);
+                        possibleStates.Enqueue(new Tuple<GameState, ActionSequence>(actionGameState, state.Item2.Extended(action)));
+                    }
                 }
 
-                return new ActionSequence();
+                return bestSeq;
             }
 
             public static List<GameAction> GetPossibleActions(GameState gs)
@@ -316,9 +335,23 @@ namespace CCG
 
     public class ActionSequence
     {
+        public List<GameAction> Actions;
+
         public override string ToString()
         {
             return "Not implemetned";
+        }
+
+        public ActionSequence Extended(GameAction a)
+        {
+            var copy = new ActionSequence(this);
+            copy.Add(a);
+            return copy;
+        }
+
+        public void Add(GameAction a)
+        {
+            Actions.Add(a);
         }
     }
 
@@ -439,7 +472,7 @@ namespace CCG
 
     public enum ActionType
     {
-        EmptyAction
+        NoAction
     }
 
     public class GameAction
