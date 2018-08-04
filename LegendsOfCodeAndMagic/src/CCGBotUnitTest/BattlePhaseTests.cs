@@ -18,13 +18,11 @@ namespace CCG.Tests
             148 11 0 2 2 0 -2 BCDGLW 0 0 0
          */
         [TestMethod]
-        public void ZeroPossibleActions()
+        public void PossibleActioNoAction()
         {
             Queue<string> stateStrings = new List<string>
             {
-                "30 2 24 25",
-                "30 2 24 25",
-                "6", "1",
+                ("30 2 24 25"), ("30 2 24 25"), "6", "1",
                 "69 3 0 0 3 4 4  B----- 0 0 0",
             }.ToQueue();
             GameState gs = Parse.GameState(stateStrings);
@@ -33,6 +31,22 @@ namespace CCG.Tests
 
             Assert.AreEqual(1, actions.Count);
             Assert.AreEqual(ActionType.NoAction, actions[0].Type);
+        }
+
+        [TestMethod]
+        public void PossibleActionAttack()
+        {
+            GameState gs = Parse.GameState(new List<string>
+            {
+                ("30 2 24 25"), ("30 2 24 25"), "6", "1",
+                "69 3 1 0 3 4 4  B----- 0 0 0",
+            }.ToQueue());
+
+            List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
+
+            Assert.AreEqual(2, actions.Count);
+            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
+            Assert.AreEqual(ActionType.CreateAttackAction, actions[1].Type);
         }
     }
 

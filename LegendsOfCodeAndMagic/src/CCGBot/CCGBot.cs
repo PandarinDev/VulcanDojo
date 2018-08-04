@@ -132,7 +132,6 @@ namespace CCG
 
             public static string ProcessTurn(GameState gs)
             {
-
                 ActionSequence seq = DecideOnBestActionSequence(gs);
                 return seq.ToString();
             }
@@ -333,28 +332,6 @@ namespace CCG
         }
     }
 
-    public class ActionSequence
-    {
-        public List<GameAction> Actions;
-
-        public override string ToString()
-        {
-            return "Not implemetned";
-        }
-
-        public ActionSequence Extended(GameAction a)
-        {
-            var copy = new ActionSequence(this);
-            copy.Add(a);
-            return copy;
-        }
-
-        public void Add(GameAction a)
-        {
-            Actions.Add(a);
-        }
-    }
-
     public static class Simulator
     {
         public static void Attack(Card attacker, Card defender)
@@ -470,9 +447,48 @@ namespace CCG
     }
 
 
+    public class ActionSequence : ICloneable
+    {
+        public List<GameAction> Actions = new List<GameAction>();
+
+        public override string ToString()
+        {
+            return "Not implemetned";
+        }
+
+        public ActionSequence Extended(GameAction a)
+        {
+            var copy = this.Clone();
+            copy.Add(a);
+            return copy;
+        }
+
+        public void Add(GameAction a)
+        {
+            Actions.Add(a);
+        }
+
+
+        object ICloneable.Clone()
+        {
+            return this.Clone();
+        }
+
+        /// <summary>
+        /// Gives back a deepcopy
+        /// </summary>
+        public ActionSequence Clone()
+        {
+            ActionSequence c = new ActionSequence();
+            c.Actions = new List<GameAction>(Actions);
+            return c;
+        }
+    }
+
     public enum ActionType
     {
-        NoAction
+        NoAction,
+        CreateAttackAction
     }
 
     public class GameAction
