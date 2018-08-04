@@ -172,8 +172,20 @@ namespace CCG
             {
                 var result = new List<GameAction>()
                 {
-                    new GameAction() // Doing nothing is always a valid action
+                    new GameAction(ActionType.NoAction) // Doing nothing is always a valid action
                 };
+
+                /* Possible actions are: 
+                 * - attacking with creature to 
+                 *      -player 
+                 *      -other creature
+                 * - play card
+                 *      - summon creature
+                 *      - use item
+                 * 
+                 * */
+
+                result.AddRange(gs.MyBoard.Select(c => new GameAction(ActionType.CreateAttackAction)));
 
                 return result;
             }
@@ -500,6 +512,11 @@ namespace CCG
     public class GameAction
     {
         public ActionType Type { get; }
+
+        public GameAction(ActionType type)
+        {
+            Type = type;
+        }
     }
 
     public class GameState
