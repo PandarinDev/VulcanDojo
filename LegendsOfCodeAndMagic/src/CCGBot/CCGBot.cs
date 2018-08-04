@@ -33,7 +33,7 @@ namespace CCG
                 }
                 else
                 {
-                    Console.WriteLine(BattlePhase.ProcessTurn(turn, gs));
+                    Console.WriteLine(BattlePhase.HumanSolver.ProcessTurn(gs));
                 }
 
                 Console.Error.WriteLine($"Turn took {stopwatch.ElapsedMilliseconds} ms");
@@ -125,154 +125,200 @@ namespace CCG
         }
     }
 
-    public static class BattlePhase
+    namespace BattlePhase
     {
-        public static string ProcessTurn(int turn, GameState gs)
+        public static class GraphSolver
         {
-            return GetBestSummon(turn, gs.EnemyBoard, gs.MyHand, gs.MyBoard) + Attack(gs.EnemyBoard, gs.MyBoard);
-        }
-
-        public static List<GameAction> GetPossibleActions(GameState gs)
-        {
-            return new List<GameAction>()
+            public static string ProcessTurn(GameState gs)
             {
-                new GameAction()
-            };
-        }
+                ActionSequence seq = DecideOnBestActionSequence(gs);
+                return seq.ToString();
+            }
 
-        public static string GetBestSummon(int turn, List<Card> enemyBoard, List<Card> myHand, List<Card> myBoard)
-        {
-            int mana = (turn - 30).Clamp(0, 12);
-            int boardCount = myBoard.Count;
-            int enemyBoardCount = enemyBoard.Count;
-            var playList = new List<int>();
-            var card = new Card();
-            string command = "";
-            while (true)
+            public static ActionSequence DecideOnBestActionSequence(GameState gs)
             {
-                card = GetMostExpensiveCard(mana, boardCount, enemyBoardCount, myHand);
-                if (card == null)
+                var actions = GetPossibleActions(gs);
+
+                foreach (var action in actions)
                 {
-                    break;
+                    GameState actionGameState = SimulateAction(gs, action);
+                    double value = EvaluateGameState(actionGameState);
                 }
 
-                int target = 0;
-                if (card.CardType == CardType.GreenItem)
+                return new ActionSequence();
+            }
+
+            public static List<GameAction> GetPossibleActions(GameState gs)
+            {
+                return new List<GameAction>()
                 {
-                    if (myBoard.Count != 0)
-                    {
-                        target += myBoard[0].InstanceId;
-                    }
-                    else
-                    {
-                        Console.Error.WriteLine("Error: Tried to cast green item when I dont have a minion");
-                    }
-                }
-                else if (card.CardType == CardType.RedItem || 
-                    (card.CardType == CardType.BlueItem && card.DefenseValue < 0))
+                    new GameAction()
+                };
+            }
+
+            public static GameState SimulateAction(GameState gs, GameAction action)
+            {
+                return new GameState();
+            }
+
+            public static double EvaluateGameState(GameState gs)
+            {
+                return 0.0;
+            }
+        }
+
+        /// <summary>
+        /// Processes a turn of the battle phase based on rules written by the programmer.
+        /// Good for a baseline against AIs.
+        /// </summary>
+        public static class HumanSolver
+        {
+            public static string ProcessTurn(GameState gs)
+            {
+                return GetBestSummon(gs.MyPlayer.PlayerMana, gs.EnemyBoard, gs.MyHand, gs.MyBoard) + Attack(gs.EnemyBoard, gs.MyBoard);
+            }
+
+            public static string GetBestSummon(int mana, List<Card> enemyBoard, List<Card> myHand, List<Card> myBoard)
+            {
+                int boardCount = myBoard.Count;
+                int enemyBoardCount = enemyBoard.Count;
+                var playList = new List<int>();
+                var card = new Card();
+                string command = "";
+                while (true)
                 {
-                    if (enemyBoard.Count == 0)
+                    card = GetMostExpensiveCard(mana, boardCount, enemyBoardCount, myHand);
+                    if (card == null)
                     {
-                        target += -1;
+                        break;
                     }
-                    else
+
+                    int target = 0;
+                    if (card.CardType == CardType.GreenItem)
                     {
-                        target += enemyBoard[0].InstanceId;
-                        if (enemyBoard[0].DefenseValue <= -card.DefenseValue)
+                        if (myBoard.Count != 0)
                         {
-                            enemyBoard.RemoveAt(0);
+                            target += myBoard[0].InstanceId;
+                        }
+                        else
+                        {
+                            Console.Error.WriteLine("Error: Tried to cast green item when I dont have a minion");
+                        }
+                    }
+                    else if (card.CardType == CardType.RedItem ||
+                        (card.CardType == CardType.BlueItem && card.DefenseValue < 0))
+                    {
+                        if (enemyBoard.Count == 0)
+                        {
+                            target += -1;
+                        }
+                        else
+                        {
+                            target += enemyBoard[0].InstanceId;
+                            if (enemyBoard[0].DefenseValue <= -card.DefenseValue)
+                            {
+                                enemyBoard.RemoveAt(0);
+                            }
+                        }
+                    }
+
+                    if (card.CardType == CardType.Creature)
+                    {
+                        boardCount += 1;
+                        if (card.Abilities.Contains("C"))
+                        {
+                            myBoard.Add(card);
+                        }
+                        command += "SUMMON " + card.InstanceId + ";";
+                    }
+                    else
+                    {
+                        command += "USE " + card.InstanceId + " " + target + ";";
+                    }
+
+                    target = 0;
+                    mana -= card.Cost;
+                    myHand.Remove(card);
+                }
+
+                return command;
+            }
+
+            public static Card GetMostExpensiveCard(int mana, int myBoardCount, int enemyBoardCount, List<Card> myHand)
+            {
+                Card cardToPlay = null;
+                int maxCost = 0;
+                foreach (Card card in myHand)
+                {
+                    if (card.Cost <= mana)
+                    {
+                        if ((card.CardType == CardType.Creature && myBoardCount < 6) ||
+                            card.CardType == CardType.BlueItem ||
+                            (card.CardType == CardType.GreenItem && myBoardCount > 0) ||
+                            (card.CardType == CardType.RedItem && enemyBoardCount > 0))
+                        {
+                            if (maxCost <= card.Cost)
+                            {
+                                Console.Error.WriteLine($"Considering to play {card.InstanceId}");
+                                maxCost = card.Cost;
+                                cardToPlay = card;
+                            }
                         }
                     }
                 }
-
-                if (card.CardType == CardType.Creature)
-                {
-                    boardCount += 1;
-                    if (card.Abilities.Contains("C"))
-                    {
-                        myBoard.Add(card);
-                    }
-                    command += "SUMMON " + card.InstanceId + ";";
-                }
-                else
-                {
-                    command += "USE " + card.InstanceId + " " + target + ";";
-                }
-
-                target = 0;
-                mana -= card.Cost;
-                myHand.Remove(card);
+                return cardToPlay;
             }
 
-            return command;
-        }
-
-        public static Card GetMostExpensiveCard(int mana, int myBoardCount, int enemyBoardCount, List<Card> myHand)
-        {
-            Card cardToPlay = null;
-            int maxCost = 0;
-            foreach (Card card in myHand)
+            public static string Attack(List<Card> enemyBoard, List<Card> myBoard)
             {
-                if (card.Cost <= mana)
+                string attacks = "";
+                var enemyTreat = new List<Card>();
+                foreach (Card card in enemyBoard)
                 {
-                    if ((card.CardType == CardType.Creature && myBoardCount < 6) || 
-                        card.CardType == CardType.BlueItem || 
-                        (card.CardType == CardType.GreenItem && myBoardCount > 0) || 
-                        (card.CardType == CardType.RedItem && enemyBoardCount > 0))
+                    if (card.Abilities.Contains("G"))
                     {
-                        if (maxCost <= card.Cost)
+                        enemyTreat.Add(card);
+                    }
+                }
+                foreach (Card card in myBoard)
+                {
+                    if (enemyTreat.Count != 0)
+                    {
+                        Card enemyCard = enemyTreat[0];
+                        attacks += "ATTACK " + card.InstanceId + " " + enemyCard.InstanceId + ";";
+                        if (enemyCard.Abilities.Contains("W"))
                         {
-                            Console.Error.WriteLine($"Considering to play {card.InstanceId}");
-                            maxCost = card.Cost;
-                            cardToPlay = card;
+                            enemyCard.Abilities = enemyCard.Abilities.Replace("W", "");
                         }
-                    }
-                }
-            }
-            return cardToPlay;
-        }
-
-        public static string Attack(List<Card> enemyBoard, List<Card> myBoard)
-        {
-            string attacks = "";
-            var enemyTreat = new List<Card>();
-            foreach (Card card in enemyBoard)
-            {
-                if (card.Abilities.Contains("G"))
-                {
-                    enemyTreat.Add(card);
-                }
-            }
-            foreach (Card card in myBoard)
-            {
-                if (enemyTreat.Count != 0)
-                {
-                    Card enemyCard = enemyTreat[0];
-                    attacks += "ATTACK " + card.InstanceId + " " + enemyCard.InstanceId + ";";
-                    if (enemyCard.Abilities.Contains("W"))
-                    {
-                        enemyCard.Abilities = enemyCard.Abilities.Replace("W", "");
-                    }
-                    else if (card.Abilities.Contains("L"))
-                    {
-                        enemyCard.DefenseValue = 0;
+                        else if (card.Abilities.Contains("L"))
+                        {
+                            enemyCard.DefenseValue = 0;
+                        }
+                        else
+                        {
+                            enemyCard.DefenseValue -= card.AttackValue;
+                        }
+                        if (enemyCard.DefenseValue <= 0)
+                        {
+                            enemyTreat.RemoveAt(0);
+                        }
                     }
                     else
                     {
-                        enemyCard.DefenseValue -= card.AttackValue;
-                    }
-                    if (enemyCard.DefenseValue <= 0)
-                    {
-                        enemyTreat.RemoveAt(0);
+                        attacks += "ATTACK " + card.InstanceId + " -1;";
                     }
                 }
-                else
-                {
-                    attacks += "ATTACK " + card.InstanceId + " -1;";
-                }
-            }
 
-            return attacks;
+                return attacks;
+            }
+        }
+    }
+
+    public class ActionSequence
+    {
+        public override string ToString()
+        {
+            return "Not implemetned";
         }
     }
 

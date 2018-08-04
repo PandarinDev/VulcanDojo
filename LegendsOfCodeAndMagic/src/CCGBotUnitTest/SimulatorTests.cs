@@ -10,27 +10,6 @@ namespace CCG.Tests
     public class SimulatorTests
     {
         [TestMethod]
-        public void Test_GetMostExpensiveCard()
-        {
-            // CID, IID, Loc, Type, Cost, Att, Def, Abl, HP, EnemyHP, Draw
-            // example Creature: "148 11 0 2 2 0 -2 BCDGLW 0 0 0"
-            string input = string.Join("\n", new string[]
-            {
-                @"120 -1 0 1 2 1 0 ----L- 0 0 0",
-                @"90 -1 0 0 8 5 5 -C---- 0 0 0",
-                @"60 -1 0 0 7 4 8 ------ 0 0 0"
-            });
-            StringReader strReader = new StringReader(input);
-            List<Card> cards = new List<Card>()
-            {
-                Parse.Card(strReader.ReadLine()),
-                Parse.Card(strReader.ReadLine()),
-                Parse.Card(strReader.ReadLine())
-            };
-           Assert.AreEqual(cards[1], BattlePhase.GetMostExpensiveCard(8, 0, 0, cards));
-        }
-
-        [TestMethod]
         public void SimulateSimpleAttack()
         {
             SimulateAttack(1, 2,  2, 2,  0, 1);
