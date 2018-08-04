@@ -9,12 +9,6 @@ namespace CCG
     {
         static void Main(string[] args)
         {
-            var firstPlayer = new Gambler();
-            var secondPlayer = new Gambler();
-            var myHand = new List<Card>();
-            var myBoard = new List<Card>();
-            var enemyBoard = new List<Card>();
-
             int turn = 0;
 
             const int draftTurnCount = 30;
@@ -26,46 +20,21 @@ namespace CCG
             while (true)
             {
                 stopwatch.Restart();
-
-                firstPlayer = Parse.Gambler(Console.ReadLine());
-                secondPlayer = Parse.Gambler(Console.ReadLine());
-                int opponentHandCount = int.Parse(Console.ReadLine());
-                int cardCount = int.Parse(Console.ReadLine());
-
-                for (int i = 0; i < cardCount; i++)
-                {
-                    Card card = Parse.Card(Console.ReadLine());
-                    
-                    switch (card.Location)
-                    {
-                        case BoardLocation.EnemySide:
-                            enemyBoard.Add(card);
-                            break;
-                        case BoardLocation.InHand:
-                            myHand.Add(card);
-                            break;
-                        case BoardLocation.PlayerSide:
-                            myBoard.Add(card);
-                            break;
-                    }
-                }
+                GameState gs = Parse.GameState();
 
                 if (turn < lastTurn)
                 {
                     ++turn;
                 }
-                
+
                 if (turn <= draftTurnCount)
                 {
-                    Console.WriteLine(DraftPhase.GetBestCard(myHand, curve));
+                    Console.WriteLine(DraftPhase.GetBestCard(gs.MyHand, curve));
                 }
                 else
                 {
-                    Console.WriteLine(BattlePhase.GetBestSummon(turn, enemyBoard, myHand, myBoard) + BattlePhase.Attack(enemyBoard, myBoard));
+                    Console.WriteLine(BattlePhase.ProcessTurn(turn, gs));
                 }
-                enemyBoard.Clear();
-                myHand.Clear();
-                myBoard.Clear();
 
                 Console.Error.WriteLine($"Turn took {stopwatch.ElapsedMilliseconds} ms");
             }
@@ -158,6 +127,11 @@ namespace CCG
 
     public static class BattlePhase
     {
+        public static string ProcessTurn(int turn, GameState gs)
+        {
+            return GetBestSummon(turn, gs.EnemyBoard, gs.MyHand, gs.MyBoard) + Attack(gs.EnemyBoard, gs.MyBoard);
+        }
+
         public static string GetBestSummon(int turn, List<Card> enemyBoard, List<Card> myHand, List<Card> myBoard)
         {
             int mana = (turn - 30).Clamp(0, 12);
@@ -325,6 +299,36 @@ namespace CCG
 
     public static class Parse
     {
+        public static GameState GameState()
+        {
+            GameState gs = new GameState
+            {
+                MyPlayer = Parse.Gambler(Console.ReadLine()),
+                EnemyPlayer = Parse.Gambler(Console.ReadLine()),
+                EnemyHandCount = int.Parse(Console.ReadLine()),
+                CardCount = int.Parse(Console.ReadLine())
+            };
+
+            for (int i = 0; i < gs.CardCount; i++)
+            {
+                Card card = Parse.Card(Console.ReadLine());
+
+                switch (card.Location)
+                {
+                    case BoardLocation.EnemySide:
+                        gs.EnemyBoard.Add(card);
+                        break;
+                    case BoardLocation.InHand:
+                        gs.MyHand.Add(card);
+                        break;
+                    case BoardLocation.PlayerSide:
+                        gs.MyBoard.Add(card);
+                        break;
+                }
+            }
+            return gs;
+        }
+
         public static Gambler Gambler(string input)
         {
             string[] inputs = input.Split(' ');
@@ -357,6 +361,17 @@ namespace CCG
             };
             return card;
         }
+    }
+
+    public class GameState
+    {
+        public Gambler MyPlayer;
+        public Gambler EnemyPlayer;
+        public int EnemyHandCount;
+        public int CardCount; // Cards in my hand + on the board
+        public List<Card> MyHand = new List<Card>();
+        public List<Card> MyBoard = new List<Card>();
+        public List<Card> EnemyBoard = new List<Card>();
     }
 
     public class Gambler
