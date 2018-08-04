@@ -4,7 +4,7 @@ using CCG;
 using System.Collections.Generic;
 using System.IO;
 
-namespace CCGBot.Tests
+namespace CCG.Tests
 {
     [TestClass]
     public class SimulatorTests
@@ -12,8 +12,10 @@ namespace CCGBot.Tests
         [TestMethod]
         public void Test_GetMostExpensiveCard()
         {
+            // CID, IID, Loc, Type, Cost, Att, Def, Abl, HP, EnemyHP, Draw
+            // example Creature: "148 11 0 2 2 0 -2 BCDGLW 0 0 0"
             string input = string.Join("\n", new string[]
-            {// CID, IID, Loc, Type, Cost, Att, Def, Abl, HP, EnemyHP, Draw
+            {
                 @"120 -1 0 1 2 1 0 ----L- 0 0 0",
                 @"90 -1 0 0 8 5 5 -C---- 0 0 0",
                 @"60 -1 0 0 7 4 8 ------ 0 0 0"

@@ -20,7 +20,7 @@ namespace CCG
             while (true)
             {
                 stopwatch.Restart();
-                GameState gs = Parse.GameState();
+                GameState gs = Parse.GameStateFromConsole();
 
                 if (turn < lastTurn)
                 {
@@ -130,6 +130,14 @@ namespace CCG
         public static string ProcessTurn(int turn, GameState gs)
         {
             return GetBestSummon(turn, gs.EnemyBoard, gs.MyHand, gs.MyBoard) + Attack(gs.EnemyBoard, gs.MyBoard);
+        }
+
+        public static List<GameAction> GetPossibleActions(GameState gs)
+        {
+            return new List<GameAction>()
+            {
+                new GameAction()
+            };
         }
 
         public static string GetBestSummon(int turn, List<Card> enemyBoard, List<Card> myHand, List<Card> myBoard)
@@ -299,19 +307,36 @@ namespace CCG
 
     public static class Parse
     {
-        public static GameState GameState()
+        public static GameState GameStateFromConsole()
+        {
+            Queue<string> lines = new Queue<string>();
+            lines.Enqueue(Console.ReadLine());
+            lines.Enqueue(Console.ReadLine());
+            lines.Enqueue(Console.ReadLine());
+            string countString = Console.ReadLine();
+            lines.Enqueue(countString);
+
+            int count = int.Parse(countString);
+            for (int i = 0; i < count; i++)
+            {
+                lines.Enqueue(Console.ReadLine());
+            }
+            return Parse.GameState(lines);
+        }
+
+        public static GameState GameState(Queue<string> lines)
         {
             GameState gs = new GameState
             {
-                MyPlayer = Parse.Gambler(Console.ReadLine()),
-                EnemyPlayer = Parse.Gambler(Console.ReadLine()),
-                EnemyHandCount = int.Parse(Console.ReadLine()),
-                CardCount = int.Parse(Console.ReadLine())
+                MyPlayer = Parse.Gambler(lines.Dequeue()),
+                EnemyPlayer = Parse.Gambler(lines.Dequeue()),
+                EnemyHandCount = int.Parse(lines.Dequeue()),
+                CardCount = int.Parse(lines.Dequeue())
             };
 
             for (int i = 0; i < gs.CardCount; i++)
             {
-                Card card = Parse.Card(Console.ReadLine());
+                Card card = Parse.Card(lines.Dequeue());
 
                 switch (card.Location)
                 {
@@ -331,6 +356,7 @@ namespace CCG
 
         public static Gambler Gambler(string input)
         {
+            Console.Error.WriteLine("!parse Gambler: " + input);
             string[] inputs = input.Split(' ');
             var gambler = new Gambler
             {
@@ -344,6 +370,7 @@ namespace CCG
 
         public static Card Card(string input)
         {
+            Console.Error.WriteLine("!parse Card: " + input);
             string[] inputs = input.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             var card = new Card
             {
@@ -361,6 +388,17 @@ namespace CCG
             };
             return card;
         }
+    }
+
+
+    public enum ActionType
+    {
+        EmptyAction
+    }
+
+    public class GameAction
+    {
+        public ActionType Type { get; }
     }
 
     public class GameState
