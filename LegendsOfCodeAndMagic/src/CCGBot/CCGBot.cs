@@ -186,6 +186,7 @@ namespace CCG
                  * */
 
                 result.AddRange(gs.MyBoard.Select(c => new GameAction(ActionType.CreateAttackAction)));
+                result.AddRange(gs.MyHand.FindAll(c => c.Cost < gs.MyPlayer.Mana).Select(c => new GameAction(ActionType.PlayCard)));
 
                 return result;
             }
@@ -209,7 +210,7 @@ namespace CCG
         {
             public static string ProcessTurn(GameState gs)
             {
-                return GetBestSummon(gs.MyPlayer.PlayerMana, gs.EnemyBoard, gs.MyHand, gs.MyBoard) + Attack(gs.EnemyBoard, gs.MyBoard);
+                return GetBestSummon(gs.MyPlayer.Mana, gs.EnemyBoard, gs.MyHand, gs.MyBoard) + Attack(gs.EnemyBoard, gs.MyBoard);
             }
 
             public static string GetBestSummon(int mana, List<Card> enemyBoard, List<Card> myHand, List<Card> myBoard)
@@ -432,10 +433,10 @@ namespace CCG
             string[] inputs = input.Split(' ');
             var gambler = new Gambler
             {
-                PlayerHealth = int.Parse(inputs[0]),
-                PlayerMana = int.Parse(inputs[1]),
-                PlayerDeck = int.Parse(inputs[2]),
-                PlayerRune = int.Parse(inputs[3])
+                Health = int.Parse(inputs[0]),
+                Mana = int.Parse(inputs[1]),
+                DeckSize = int.Parse(inputs[2]),
+                NextRuneThreshold = int.Parse(inputs[3])
             };
             return gambler;
         }
@@ -506,7 +507,8 @@ namespace CCG
     public enum ActionType
     {
         NoAction,
-        CreateAttackAction
+        CreateAttackAction,
+        PlayCard
     }
 
     public class GameAction
@@ -532,10 +534,10 @@ namespace CCG
 
     public class Gambler
     {
-        public int PlayerHealth { get; set; }
-        public int PlayerMana { get; set; }
-        public int PlayerDeck { get; set; }
-        public int PlayerRune { get; set; }
+        public int Health { get; set; }
+        public int Mana { get; set; }
+        public int DeckSize { get; set; }
+        public int NextRuneThreshold { get; set; }
         public int Identity { get; set; }
     }
 

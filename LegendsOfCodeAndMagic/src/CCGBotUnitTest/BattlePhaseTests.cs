@@ -48,6 +48,22 @@ namespace CCG.Tests
             Assert.AreEqual(ActionType.NoAction, actions[0].Type);
             Assert.AreEqual(ActionType.CreateAttackAction, actions[1].Type);
         }
+
+        [TestMethod]
+        public void PossibleActionPlayCard()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 4 24 25"), ("30 4 24 25"), "6", "1",
+                "69 3 0 0 3 4 4  B----- 0 0 0",
+            });
+
+            List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
+
+            Assert.AreEqual(2, actions.Count);
+            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
+            Assert.AreEqual(ActionType.PlayCard, actions[1].Type);
+        }
     }
 
     public static class Extensions
