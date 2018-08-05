@@ -169,7 +169,6 @@ namespace CCG.Tests
         }
         #endregion
 
-        // TODO: USe items actions
         #region UseItem action tests
 
         [TestMethod]
@@ -213,8 +212,13 @@ namespace CCG.Tests
             Assert.AreEqual(2, actions[1].TargetId);
         }
 
+        // TODO: Use blue items
+        // TODO: Dont use green item on enemy
+        // TODO: Dont use red item on player
 
         #endregion
+
+        // TODO: Combined tests with more creatures on board and cards in hand
     }
 
     public static class Extensions
