@@ -46,7 +46,7 @@ namespace CCG.Tests
 
             Assert.AreEqual(2, actions.Count);
             Assert.AreEqual(ActionType.NoAction, actions[0].Type);
-            Assert.AreEqual(ActionType.CreatureAttackAction, actions[1].Type);
+            Assert.AreEqual(ActionType.CreatureAttack, actions[1].Type);
         }
 
         [TestMethod]
@@ -63,8 +63,8 @@ namespace CCG.Tests
 
             Assert.AreEqual(3, actions.Count);
             Assert.AreEqual(ActionType.NoAction, actions[0].Type);
-            Assert.AreEqual(ActionType.CreatureAttackAction, actions[1].Type);
-            Assert.AreEqual(ActionType.CreatureAttackAction, actions[2].Type);
+            Assert.AreEqual(ActionType.CreatureAttack, actions[1].Type);
+            Assert.AreEqual(ActionType.CreatureAttack, actions[2].Type);
         }
 
         [TestMethod]
@@ -81,10 +81,10 @@ namespace CCG.Tests
 
             Assert.AreEqual(3, actions.Count);
             Assert.AreEqual(ActionType.NoAction, actions[0].Type);
-            Assert.AreEqual(ActionType.CreatureAttackAction, actions[1].Type);
+            Assert.AreEqual(ActionType.CreatureAttack, actions[1].Type);
             Assert.AreEqual(3, actions[1].Id);
             Assert.AreEqual(-1, actions[1].TargetId);
-            Assert.AreEqual(ActionType.CreatureAttackAction, actions[2].Type);
+            Assert.AreEqual(ActionType.CreatureAttack, actions[2].Type);
             Assert.AreEqual(3, actions[2].Id);
             Assert.AreEqual(2, actions[2].TargetId);
         }
@@ -103,7 +103,7 @@ namespace CCG.Tests
 
             Assert.AreEqual(2, actions.Count);
             Assert.AreEqual(ActionType.NoAction, actions[0].Type);
-            Assert.AreEqual(ActionType.CreatureAttackAction, actions[1].Type);
+            Assert.AreEqual(ActionType.CreatureAttack, actions[1].Type);
             Assert.AreEqual(3, actions[1].Id);
             Assert.AreEqual(2, actions[1].TargetId);
         }
@@ -123,7 +123,7 @@ namespace CCG.Tests
 
             Assert.AreEqual(2, actions.Count);
             Assert.AreEqual(ActionType.NoAction, actions[0].Type);
-            Assert.AreEqual(ActionType.CreatureAttackAction, actions[1].Type);
+            Assert.AreEqual(ActionType.CreatureAttack, actions[1].Type);
             Assert.AreEqual(3, actions[1].Id);
             Assert.AreEqual(2, actions[1].TargetId);
         }
@@ -144,7 +144,7 @@ namespace CCG.Tests
 
             Assert.AreEqual(2, actions.Count);
             Assert.AreEqual(ActionType.NoAction, actions[0].Type);
-            Assert.AreEqual(ActionType.PlayCardAction, actions[1].Type);
+            Assert.AreEqual(ActionType.PlayCard, actions[1].Type);
             Assert.AreEqual(3, actions[1].Id);
         }
 
@@ -162,9 +162,9 @@ namespace CCG.Tests
 
             Assert.AreEqual(3, actions.Count);
             Assert.AreEqual(ActionType.NoAction, actions[0].Type);
-            Assert.AreEqual(ActionType.PlayCardAction, actions[1].Type);
+            Assert.AreEqual(ActionType.PlayCard, actions[1].Type);
             Assert.AreEqual(3, actions[1].Id);
-            Assert.AreEqual(ActionType.PlayCardAction, actions[2].Type);
+            Assert.AreEqual(ActionType.PlayCard, actions[2].Type);
             Assert.AreEqual(2, actions[2].Id);
         }
         #endregion
@@ -186,10 +186,10 @@ namespace CCG.Tests
 
             Assert.AreEqual(3, actions.Count);
             Assert.AreEqual(ActionType.NoAction, actions[0].Type);
-            Assert.AreEqual(ActionType.CreatureAttackAction, actions[1].Type);
+            Assert.AreEqual(ActionType.CreatureAttack, actions[1].Type);
             Assert.AreEqual(2, actions[1].Id);
             Assert.AreEqual(-1, actions[1].TargetId);
-            Assert.AreEqual(ActionType.UseItemAction, actions[2].Type);
+            Assert.AreEqual(ActionType.UseItem, actions[2].Type);
             Assert.AreEqual(1, actions[2].Id);
             Assert.AreEqual(2, actions[2].TargetId);
         }
@@ -208,7 +208,7 @@ namespace CCG.Tests
 
             Assert.AreEqual(2, actions.Count);
             Assert.AreEqual(ActionType.NoAction, actions[0].Type);
-            Assert.AreEqual(ActionType.UseItemAction, actions[1].Type);
+            Assert.AreEqual(ActionType.UseItem, actions[1].Type);
             Assert.AreEqual(1, actions[1].Id);
             Assert.AreEqual(2, actions[1].TargetId);
         }

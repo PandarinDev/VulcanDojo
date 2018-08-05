@@ -533,9 +533,9 @@ namespace CCG
     public enum ActionType
     {
         NoAction,
-        CreatureAttackAction,
-        PlayCardAction,
-        UseItemAction
+        CreatureAttack,
+        PlayCard,
+        UseItem
     }
 
     public class GameAction
@@ -564,17 +564,17 @@ namespace CCG
     {
         public static GameAction PlayCard(int iid)
         {
-            return new GameAction(ActionType.PlayCardAction, iid);
+            return new GameAction(ActionType.PlayCard, iid);
         }
 
         public static GameAction CreatureAttack(int iid, int targetId)
         {
-            return new GameAction(ActionType.CreatureAttackAction, iid, targetId);
+            return new GameAction(ActionType.CreatureAttack, iid, targetId);
         }
 
         public static GameAction UseItem(int iid, int targetId)
         {
-            return new GameAction(ActionType.UseItemAction, iid, targetId);
+            return new GameAction(ActionType.UseItem, iid, targetId);
         }
     }
 
