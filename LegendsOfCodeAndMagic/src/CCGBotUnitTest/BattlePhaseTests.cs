@@ -173,7 +173,7 @@ namespace CCG.Tests
         #region UseItem action tests
 
         [TestMethod]
-        public void PossibleAction_UseItem()
+        public void PossibleAction_UseGreenItem()
         {
             GameState gs = Parse.GameState(new Queue<string>
             {
@@ -190,8 +190,29 @@ namespace CCG.Tests
             Assert.AreEqual(2, actions[1].Id);
             Assert.AreEqual(-1, actions[1].TargetId);
             Assert.AreEqual(ActionType.UseItemAction, actions[2].Type);
+            Assert.AreEqual(1, actions[2].Id);
             Assert.AreEqual(2, actions[2].TargetId);
         }
+
+        [TestMethod]
+        public void PossibleAction_UseRedItem()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 4 24 25"), ("30 4 24 25"), "6", "2",
+                "145 1 0 2 3 -2 -2 ------ 0 0 0",
+                "70 2 -1 0 2 2 2  ------ 0 0 0",
+            });
+
+            List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
+
+            Assert.AreEqual(2, actions.Count);
+            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
+            Assert.AreEqual(ActionType.UseItemAction, actions[1].Type);
+            Assert.AreEqual(1, actions[1].Id);
+            Assert.AreEqual(2, actions[1].TargetId);
+        }
+
 
         #endregion
     }

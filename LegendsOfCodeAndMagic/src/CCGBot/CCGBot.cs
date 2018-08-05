@@ -205,9 +205,12 @@ namespace CCG
                 var creaturesInHand = gs.MyHand.FindAll(c => c.CardType == CardType.Creature && c.Cost < gs.MyPlayer.Mana);
                 var itemsInHand = gs.MyHand.FindAll(c => c.CardType != CardType.Creature && c.Cost < gs.MyPlayer.Mana);
 
-                result.AddRange(itemsInHand.Join(gs.MyBoard, _ => true, _=> true, 
-                    (i, t) => new { Item=i.InstanceId, Target=t.InstanceId})
+                result.AddRange(itemsInHand.FindAll(i => i.CardType == CardType.GreenItem)
+                    .Join(gs.MyBoard, _ => true, _=> true, (i, t) => new { Item=i.InstanceId, Target=t.InstanceId})
                     .Select(p=> GameActionFactory.UseItem(p.Item, p.Target)));
+                result.AddRange(itemsInHand.FindAll(i => i.CardType == CardType.RedItem)
+                    .Join(gs.EnemyBoard, _ => true, _ => true, (i, t) => new { Item = i.InstanceId, Target = t.InstanceId })
+                    .Select(p => GameActionFactory.UseItem(p.Item, p.Target)));
 
                 result.AddRange(creaturesInHand.Select(c => GameActionFactory.PlayCard(c.InstanceId)));
 
