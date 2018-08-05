@@ -197,12 +197,19 @@ namespace CCG
                 }
                 else
                 {
-                    result.AddRange(gs.MyBoard.Join(gs.EnemyBoard, _ => true, e => e.HasGuard(), (c, e) => new { Card = c, Enemy = e })
-                        .Select(p => GameActionFactory.CreatureAttack(p.Card.InstanceId, p.Enemy.InstanceId)));
+                    result.AddRange(gs.MyBoard.Join(gs.EnemyBoard, _ => true, e => e.HasGuard(), 
+                        (c, e) => new { Card = c.InstanceId, Enemy = e.InstanceId })
+                        .Select(p => GameActionFactory.CreatureAttack(p.Card, p.Enemy)));
                 }
 
-                result.AddRange(gs.MyHand.FindAll(c => c.Cost < gs.MyPlayer.Mana)
-                    .Select(c => GameActionFactory.PlayCard(c.InstanceId)));
+                var creaturesInHand = gs.MyHand.FindAll(c => c.CardType == CardType.Creature && c.Cost < gs.MyPlayer.Mana);
+                var itemsInHand = gs.MyHand.FindAll(c => c.CardType != CardType.Creature && c.Cost < gs.MyPlayer.Mana);
+
+                result.AddRange(itemsInHand.Join(gs.MyBoard, _ => true, _=> true, 
+                    (i, t) => new { Item=i.InstanceId, Target=t.InstanceId})
+                    .Select(p=> GameActionFactory.UseItem(p.Item, p.Target)));
+
+                result.AddRange(creaturesInHand.Select(c => GameActionFactory.PlayCard(c.InstanceId)));
 
                 return result;
             }
@@ -524,7 +531,8 @@ namespace CCG
     {
         NoAction,
         CreatureAttackAction,
-        PlayCardAction
+        PlayCardAction,
+        UseItemAction
     }
 
     public class GameAction
@@ -559,6 +567,11 @@ namespace CCG
         public static GameAction CreatureAttack(int iid, int targetId)
         {
             return new GameAction(ActionType.CreatureAttackAction, iid, targetId);
+        }
+
+        public static GameAction UseItem(int iid, int targetId)
+        {
+            return new GameAction(ActionType.UseItemAction, iid, targetId);
         }
     }
 

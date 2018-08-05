@@ -128,8 +128,6 @@ namespace CCG.Tests
             Assert.AreEqual(2, actions[1].TargetId);
         }
 
-        // TODO: USe items actions
-
         #endregion
 
         #region PlayCard action tests
@@ -169,6 +167,32 @@ namespace CCG.Tests
             Assert.AreEqual(ActionType.PlayCardAction, actions[2].Type);
             Assert.AreEqual(2, actions[2].Id);
         }
+        #endregion
+
+        // TODO: USe items actions
+        #region UseItem action tests
+
+        [TestMethod]
+        public void PossibleAction_UseItem()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 4 24 25"), ("30 4 24 25"), "6", "2",
+                "119 1 0 1 1 1 2  ------ 0 0 0",
+                "70 2 1 0 2 2 2  ------ 0 0 0",
+            });
+
+            List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
+
+            Assert.AreEqual(3, actions.Count);
+            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
+            Assert.AreEqual(ActionType.CreatureAttackAction, actions[1].Type);
+            Assert.AreEqual(2, actions[1].Id);
+            Assert.AreEqual(-1, actions[1].TargetId);
+            Assert.AreEqual(ActionType.UseItemAction, actions[2].Type);
+            Assert.AreEqual(2, actions[2].TargetId);
+        }
+
         #endregion
     }
 
