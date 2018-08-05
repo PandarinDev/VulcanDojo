@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace CCG.Tests
@@ -194,6 +195,23 @@ namespace CCG.Tests
         }
 
         [TestMethod]
+        public void PossibleAction_DontUseGreenItemWhenNoFriendlyTarget()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 4 24 25"), ("30 4 24 25"), "6", "3",
+                "119 1 0 1 1 1 2  ------ 0 0 0",
+                "70 2 -1 0 2 2 2  ------ 0 0 0",
+                "74 3 -1 0 4 3 5  ---G-- 0 0 0",
+            });
+
+            List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
+
+            Assert.AreEqual(1, actions.Count);
+            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
+        }
+
+        [TestMethod]
         public void PossibleAction_UseRedItem()
         {
             GameState gs = Parse.GameState(new Queue<string>
@@ -210,6 +228,21 @@ namespace CCG.Tests
             Assert.AreEqual(ActionType.UseItem, actions[1].Type);
             Assert.AreEqual(1, actions[1].Id);
             Assert.AreEqual(2, actions[1].TargetId);
+        }
+
+        [TestMethod]
+        public void PossibleAction_DontUseRedItemWhenNoEnemyTarget()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 4 24 25"), ("30 4 24 25"), "6", "3",
+                "145 1 0 2 3 -2 -2 ------ 0 0 0",
+                "70 2 1 0 2 2 2  ------ 0 0 0",
+                "74 3 1 0 4 3 5  ---G-- 0 0 0",
+            });
+
+            List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
+            AssertExt.HasNoItemWithCondition(actions, a => a.Type == ActionType.UseItem);
         }
 
         [TestMethod]
@@ -242,14 +275,8 @@ namespace CCG.Tests
 
             List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
 
-            Assert.AreEqual(3, actions.Count);
-            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
-            Assert.AreEqual(ActionType.UseItem, actions[1].Type);
-            Assert.AreEqual(1, actions[1].Id);
-            Assert.AreEqual(2, actions[1].TargetId);
-            Assert.AreEqual(ActionType.UseItem, actions[2].Type);
-            Assert.AreEqual(1, actions[2].Id);
-            Assert.AreEqual(-1, actions[2].TargetId);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.UseItem && a.Id == 1 && a.TargetId == 2);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.UseItem && a.Id == 1 && a.TargetId == -1);
         }
 
         [TestMethod]
@@ -263,12 +290,7 @@ namespace CCG.Tests
             });
 
             List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
-
-            Assert.AreEqual(2, actions.Count);
-            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
-            Assert.AreEqual(ActionType.UseItem, actions[1].Type);
-            Assert.AreEqual(1, actions[1].Id);
-            Assert.AreEqual(-1, actions[1].TargetId);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.UseItem && a.Id == 1 && a.TargetId == -1);
         }
 
         // TODO: Dont use green item on enemy
@@ -279,8 +301,24 @@ namespace CCG.Tests
         // TODO: Combined tests with more creatures on board and cards in hand
     }
 
-    public static class Extensions
+    public static class AssertExt
     {
         public static void Add<T>(this Queue<T> list, T item) =>list.Enqueue(item);
+
+        public static void HasAnyItem<T>(IEnumerable<T> items, Func<T,bool> func)
+        {
+            Assert.IsTrue(items.Any(t => func(t)), "Didn't found an item which fulfilled the conditions.");
+        }
+
+        public static void HasUniqueItem<T>(List<T> items, Func<T, bool> func)
+        {
+            var it = items.FindAll(i => func(i));
+            Assert.AreEqual(1, it.Count, "There are no item, or more than one items which fulfill the conditions.");
+        }
+
+        public static void HasNoItemWithCondition<T>(IEnumerable<T> items, Func<T, bool> func)
+        {
+            Assert.IsFalse(items.Any(t => func(t)), "Found an item which fulfilled the conditions.");
+        }
     }
 }
