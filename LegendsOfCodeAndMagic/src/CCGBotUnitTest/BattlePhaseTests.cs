@@ -23,7 +23,7 @@ namespace CCG.Tests
             Queue<string> stateStrings = new Queue<string>
             {
                 ("30 2 24 25"), ("30 2 24 25"), "6", "1",
-                "69 3 0 0 3 4 4  B----- 0 0 0",
+                "69 3 0 0 3 4 4  ------ 0 0 0",
             };
             GameState gs = Parse.GameState(stateStrings);
 
@@ -40,7 +40,7 @@ namespace CCG.Tests
             GameState gs = Parse.GameState(new Queue<string>
             {
                 ("30 2 24 25"), ("30 2 24 25"), "6", "1",
-                "69 3 1 0 3 4 4  B----- 0 0 0",
+                "69 3 1 0 3 4 4  ------ 0 0 0",
             });
 
             List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
@@ -56,7 +56,7 @@ namespace CCG.Tests
             GameState gs = Parse.GameState(new Queue<string>
             {
                 ("30 2 24 25"), ("30 2 24 25"), "6", "2",
-                "69 3 1 0 3 4 4  B----- 0 0 0",
+                "69 3 1 0 3 4 4  ------ 0 0 0",
                 "70 2 1 0 3 2 2  ------ 0 0 0",
             });
 
@@ -74,7 +74,7 @@ namespace CCG.Tests
             GameState gs = Parse.GameState(new Queue<string>
             {
                 ("30 2 24 25"), ("30 2 24 25"), "6", "2",
-                "69 3 1 0 3 4 4  B----- 0 0 0",
+                "69 3 1 0 3 4 4  ------ 0 0 0",
                 "70 2 -1 0 3 2 2  ------ 0 0 0",
             });
 
@@ -102,7 +102,7 @@ namespace CCG.Tests
             GameState gs = Parse.GameState(new Queue<string>
             {
                 ("30 4 24 25"), ("30 4 24 25"), "6", "1",
-                "69 3 0 0 3 4 4  B----- 0 0 0",
+                "69 3 0 0 3 4 4  ------ 0 0 0",
             });
 
             List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
@@ -119,7 +119,7 @@ namespace CCG.Tests
             GameState gs = Parse.GameState(new Queue<string>
             {
                 ("30 4 24 25"), ("30 4 24 25"), "6", "2",
-                "69 3 0 0 3 4 4  B----- 0 0 0",
+                "69 3 0 0 3 4 4  ------ 0 0 0",
                 "70 2 0 0 2 2 2  ------ 0 0 0",
             });
 
