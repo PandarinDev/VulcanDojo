@@ -18,7 +18,7 @@ namespace CCG.Tests
             148 11 0 2 2 0 -2 BCDGLW 0 0 0
          */
         [TestMethod]
-        public void PossibleActioNoAction()
+        public void PossibleAction_NoAction()
         {
             Queue<string> stateStrings = new Queue<string>
             {
@@ -33,8 +33,9 @@ namespace CCG.Tests
             Assert.AreEqual(ActionType.NoAction, actions[0].Type);
         }
 
+        #region CreatureAttack action tests
         [TestMethod]
-        public void PossibleActionAttack()
+        public void PossibleAction_Attack()
         {
             GameState gs = Parse.GameState(new Queue<string>
             {
@@ -46,11 +47,30 @@ namespace CCG.Tests
 
             Assert.AreEqual(2, actions.Count);
             Assert.AreEqual(ActionType.NoAction, actions[0].Type);
-            Assert.AreEqual(ActionType.CreateAttackAction, actions[1].Type);
+            Assert.AreEqual(ActionType.CreatureAttackAction, actions[1].Type);
         }
 
         [TestMethod]
-        public void PossibleActionPlayCard()
+        public void PossibleAction_AttackWithTwo()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 2 24 25"), ("30 2 24 25"), "6", "1",
+                "69 3 1 0 3 4 4  B----- 0 0 0",
+            });
+
+            List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
+
+            Assert.AreEqual(2, actions.Count);
+            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
+            Assert.AreEqual(ActionType.CreatureAttackAction, actions[1].Type);
+        }
+
+        #endregion
+
+        #region PlayCard action tests
+        [TestMethod]
+        public void PossibleAction_PlayCard()
         {
             GameState gs = Parse.GameState(new Queue<string>
             {
@@ -62,8 +82,30 @@ namespace CCG.Tests
 
             Assert.AreEqual(2, actions.Count);
             Assert.AreEqual(ActionType.NoAction, actions[0].Type);
-            Assert.AreEqual(ActionType.PlayCard, actions[1].Type);
+            Assert.AreEqual(ActionType.PlayCardAction, actions[1].Type);
+            Assert.AreEqual(3, actions[1].Id);
         }
+
+        [TestMethod]
+        public void PossibleAction_PlayMoreCards()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 4 24 25"), ("30 4 24 25"), "6", "2",
+                "69 3 0 0 3 4 4  B----- 0 0 0",
+                "70 2 0 0 2 2 2  ------ 0 0 0",
+            });
+
+            List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
+
+            Assert.AreEqual(3, actions.Count);
+            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
+            Assert.AreEqual(ActionType.PlayCardAction, actions[1].Type);
+            Assert.AreEqual(3, actions[1].Id);
+            Assert.AreEqual(ActionType.PlayCardAction, actions[2].Type);
+            Assert.AreEqual(2, actions[2].Id);
+        }
+        #endregion
     }
 
     public static class Extensions

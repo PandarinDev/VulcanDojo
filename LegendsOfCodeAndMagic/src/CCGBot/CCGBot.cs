@@ -185,8 +185,9 @@ namespace CCG
                  * 
                  * */
 
-                result.AddRange(gs.MyBoard.Select(c => new GameAction(ActionType.CreateAttackAction)));
-                result.AddRange(gs.MyHand.FindAll(c => c.Cost < gs.MyPlayer.Mana).Select(c => new GameAction(ActionType.PlayCard)));
+                result.AddRange(gs.MyBoard.Select(c => GameActionFactory.CreatureAttack()));
+                result.AddRange(gs.MyHand.FindAll(c => c.Cost < gs.MyPlayer.Mana)
+                    .Select(c => GameActionFactory.PlayCard(c.InstanceId)));
 
                 return result;
             }
@@ -507,17 +508,36 @@ namespace CCG
     public enum ActionType
     {
         NoAction,
-        CreateAttackAction,
-        PlayCard
+        CreatureAttackAction,
+        PlayCardAction
     }
 
     public class GameAction
     {
         public ActionType Type { get; }
+        public int Id { get; }
 
         public GameAction(ActionType type)
         {
             Type = type;
+        }
+
+        public GameAction(ActionType type, int iid) : this(type)
+        {
+            Id = iid;
+        }
+    }
+
+    public static class GameActionFactory
+    {
+        public static GameAction PlayCard(int iid)
+        {
+            return new GameAction(ActionType.PlayCardAction, iid);
+        }
+
+        public static GameAction CreatureAttack()
+        {
+            return new GameAction(ActionType.CreatureAttackAction);
         }
     }
 
