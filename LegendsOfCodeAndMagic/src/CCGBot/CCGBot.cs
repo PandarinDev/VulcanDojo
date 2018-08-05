@@ -187,9 +187,20 @@ namespace CCG
 
                 const int enemyPlayerId = -1;
 
-                result.AddRange(gs.MyBoard.Select(c => GameActionFactory.CreatureAttack(c.InstanceId, enemyPlayerId)));
-                result.AddRange(gs.MyBoard.Join(gs.EnemyBoard, _ => true, _ => true, (c, e) => new { Card = c, Enemy = e}) 
-                    .Select(p => GameActionFactory.CreatureAttack(p.Card.InstanceId, p.Enemy.InstanceId)));
+                bool enemyHasGuard = gs.EnemyBoard.Any(c => c.HasGuard());
+                if (!enemyHasGuard)
+                {
+                    result.AddRange(gs.MyBoard.Select(c => GameActionFactory.CreatureAttack(c.InstanceId, enemyPlayerId)));
+
+                    result.AddRange(gs.MyBoard.Join(gs.EnemyBoard, _ => true, _ => true, (c, e) => new { Card = c, Enemy = e })
+                        .Select(p => GameActionFactory.CreatureAttack(p.Card.InstanceId, p.Enemy.InstanceId)));
+                }
+                else
+                {
+                    result.AddRange(gs.MyBoard.Join(gs.EnemyBoard, _ => true, e => e.HasGuard(), (c, e) => new { Card = c, Enemy = e })
+                        .Select(p => GameActionFactory.CreatureAttack(p.Card.InstanceId, p.Enemy.InstanceId)));
+                }
+
                 result.AddRange(gs.MyHand.FindAll(c => c.Cost < gs.MyPlayer.Mana)
                     .Select(c => GameActionFactory.PlayCard(c.InstanceId)));
 
@@ -587,6 +598,7 @@ namespace CCG
 
         public bool DidAttack { get; set; } = false;
 
+        public bool HasGuard() => Abilities.Contains("G");
         public bool HasWard() => Abilities.Contains("W");
         public bool HasLethal() => Abilities.Contains("L");
         public void RemoveWard() => Abilities = Abilities.Replace("W", "");

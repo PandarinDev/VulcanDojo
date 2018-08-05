@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using CCG;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace CCG.Tests
@@ -90,7 +89,45 @@ namespace CCG.Tests
             Assert.AreEqual(2, actions[2].TargetId);
         }
 
-        // TODO: Attack to guarded minions
+        [TestMethod]
+        public void PossibleAction_AttackGuard()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 2 24 25"), ("30 2 24 25"), "6", "2",
+                "69 3 1 0 3 4 4  ------ 0 0 0",
+                "70 2 -1 0 3 2 2  ---G-- 0 0 0",
+            });
+
+            List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
+
+            Assert.AreEqual(2, actions.Count);
+            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
+            Assert.AreEqual(ActionType.CreatureAttackAction, actions[1].Type);
+            Assert.AreEqual(3, actions[1].Id);
+            Assert.AreEqual(2, actions[1].TargetId);
+        }
+
+        [TestMethod]
+        public void PossibleAction_AttackOnlyGuard()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 2 24 25"), ("30 2 24 25"), "6", "3",
+                "69 3 1 0 3 4 4  ------ 0 0 0",
+                "70 2 -1 0 3 2 2  ---G-- 0 0 0",
+                "71 4 -1 0 4 5 2  ------ 0 0 0",
+            });
+
+            List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
+
+            Assert.AreEqual(2, actions.Count);
+            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
+            Assert.AreEqual(ActionType.CreatureAttackAction, actions[1].Type);
+            Assert.AreEqual(3, actions[1].Id);
+            Assert.AreEqual(2, actions[1].TargetId);
+        }
+
         // TODO: USe items actions
 
         #endregion
