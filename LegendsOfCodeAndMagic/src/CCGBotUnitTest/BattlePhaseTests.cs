@@ -212,7 +212,65 @@ namespace CCG.Tests
             Assert.AreEqual(2, actions[1].TargetId);
         }
 
-        // TODO: Use blue items
+        [TestMethod]
+        public void PossibleAction_UseBlueItem()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 4 24 25"), ("30 4 24 25"), "6", "1",
+                "157 1 0 3 3 0 -1 ------ 1 0 1",
+            });
+
+            List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
+
+            Assert.AreEqual(2, actions.Count);
+            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
+            Assert.AreEqual(ActionType.UseItem, actions[1].Type);
+            Assert.AreEqual(1, actions[1].Id);
+            Assert.AreEqual(-1, actions[1].TargetId);
+        }
+
+        [TestMethod]
+        public void PossibleAction_UseBlueItemOnCreature()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 4 24 25"), ("30 4 24 25"), "6", "2",
+                "157 1 0 3 3 0 -1 ------ 1 0 1",
+                "70 2 -1 0 2 2 2  ------ 0 0 0",
+            });
+
+            List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
+
+            Assert.AreEqual(3, actions.Count);
+            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
+            Assert.AreEqual(ActionType.UseItem, actions[1].Type);
+            Assert.AreEqual(1, actions[1].Id);
+            Assert.AreEqual(2, actions[1].TargetId);
+            Assert.AreEqual(ActionType.UseItem, actions[2].Type);
+            Assert.AreEqual(1, actions[2].Id);
+            Assert.AreEqual(-1, actions[2].TargetId);
+        }
+
+        [TestMethod]
+        public void PossibleAction_UseBlueItemCantTargetCreature()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 4 24 25"), ("30 4 24 25"), "6", "2",
+                "154 1 0 3 2 0 0 ------ 0 -2 1",
+                "70 2 -1 0 2 2 2 ------ 0 0 0",
+            });
+
+            List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
+
+            Assert.AreEqual(2, actions.Count);
+            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
+            Assert.AreEqual(ActionType.UseItem, actions[1].Type);
+            Assert.AreEqual(1, actions[1].Id);
+            Assert.AreEqual(-1, actions[1].TargetId);
+        }
+
         // TODO: Dont use green item on enemy
         // TODO: Dont use red item on player
 

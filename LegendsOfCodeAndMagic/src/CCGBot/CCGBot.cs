@@ -211,6 +211,11 @@ namespace CCG
                 result.AddRange(itemsInHand.FindAll(i => i.CardType == CardType.RedItem)
                     .Join(gs.EnemyBoard, _ => true, _ => true, (i, t) => new { Item = i.InstanceId, Target = t.InstanceId })
                     .Select(p => GameActionFactory.UseItem(p.Item, p.Target)));
+                result.AddRange(itemsInHand.FindAll(i => i.CardType == CardType.BlueItem && i.DefenseValue != 0)
+                    .Join(gs.EnemyBoard, _ => true, _ => true, (i, t) => new { Item = i.InstanceId, Target = t.InstanceId })
+                    .Select(p => GameActionFactory.UseItem(p.Item, p.Target)));
+                result.AddRange(itemsInHand.FindAll(i => i.CardType == CardType.BlueItem)
+                    .Select(p => GameActionFactory.UseItem(p.InstanceId, -1)));
 
                 result.AddRange(creaturesInHand.Select(c => GameActionFactory.PlayCard(c.InstanceId)));
 
