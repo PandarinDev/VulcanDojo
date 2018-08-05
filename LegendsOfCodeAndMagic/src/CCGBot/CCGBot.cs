@@ -185,13 +185,11 @@ namespace CCG
                  *      - use item
                  * 
                  * */
-
-                const int enemyPlayerId = -1;
-
+                 
                 bool enemyHasGuard = gs.EnemyBoard.Any(c => c.HasGuard());
                 if (!enemyHasGuard)
                 {
-                    result.AddRange(gs.MyBoard.Select(c => GameActionFactory.CreatureAttack(c.InstanceId, enemyPlayerId)));
+                    result.AddRange(gs.MyBoard.Select(c => GameActionFactory.CreatureAttack(c.InstanceId, GameAction.EnemyPlayerId)));
 
                     result.AddRange(gs.MyBoard.Join(gs.EnemyBoard, _ => true, _ => true, (c, e) => new { Card = c, Enemy = e })
                         .Select(p => GameActionFactory.CreatureAttack(p.Card.InstanceId, p.Enemy.InstanceId)));
@@ -216,9 +214,9 @@ namespace CCG
                     .Join(gs.EnemyBoard, _ => true, _ => true, (i, t) => new { Item = i.InstanceId, Target = t.InstanceId })
                     .Select(p => GameActionFactory.UseItem(p.Item, p.Target)));
                 result.AddRange(itemsInHand.FindAll(i => i.CardType == CardType.BlueItem)
-                    .Select(p => GameActionFactory.UseItem(p.InstanceId, enemyPlayerId)));
+                    .Select(p => GameActionFactory.UseItem(p.InstanceId, GameAction.EnemyPlayerId)));
 
-                result.AddRange(creaturesInHand.Select(c => GameActionFactory.PlayCard(c.InstanceId)));
+                result.AddRange(creaturesInHand.Select(c => GameActionFactory.SummonCreature(c.InstanceId)));
 
                 return result;
             }
@@ -540,12 +538,14 @@ namespace CCG
     {
         NoAction,
         CreatureAttack,
-        PlayCard,
+        SummonCreature,
         UseItem
     }
 
     public class GameAction
     {
+        public const int EnemyPlayerId = -1;
+
         public ActionType Type { get; }
         public int Id { get; }
         public int TargetId { get; }
@@ -568,9 +568,9 @@ namespace CCG
 
     public static class GameActionFactory
     {
-        public static GameAction PlayCard(int iid)
+        public static GameAction SummonCreature(int iid)
         {
-            return new GameAction(ActionType.PlayCard, iid);
+            return new GameAction(ActionType.SummonCreature, iid);
         }
 
         public static GameAction CreatureAttack(int iid, int targetId)

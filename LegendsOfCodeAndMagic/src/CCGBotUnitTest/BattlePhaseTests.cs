@@ -30,7 +30,7 @@ namespace CCG.Tests
             List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
 
             Assert.AreEqual(1, actions.Count);
-            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.NoAction);
         }
 
         #region CreatureAttack action tests
@@ -44,10 +44,8 @@ namespace CCG.Tests
             });
 
             List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
-
-            Assert.AreEqual(2, actions.Count);
-            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
-            Assert.AreEqual(ActionType.CreatureAttack, actions[1].Type);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.NoAction);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.CreatureAttack && a.Id == 3 && a.TargetId == GameAction.EnemyPlayerId);
         }
 
         [TestMethod]
@@ -61,11 +59,9 @@ namespace CCG.Tests
             });
 
             List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
-
-            Assert.AreEqual(3, actions.Count);
-            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
-            Assert.AreEqual(ActionType.CreatureAttack, actions[1].Type);
-            Assert.AreEqual(ActionType.CreatureAttack, actions[2].Type);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.NoAction);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.CreatureAttack && a.Id == 2 && a.TargetId == GameAction.EnemyPlayerId);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.CreatureAttack && a.Id == 3 && a.TargetId == GameAction.EnemyPlayerId);
         }
 
         [TestMethod]
@@ -79,15 +75,9 @@ namespace CCG.Tests
             });
 
             List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
-
-            Assert.AreEqual(3, actions.Count);
-            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
-            Assert.AreEqual(ActionType.CreatureAttack, actions[1].Type);
-            Assert.AreEqual(3, actions[1].Id);
-            Assert.AreEqual(-1, actions[1].TargetId);
-            Assert.AreEqual(ActionType.CreatureAttack, actions[2].Type);
-            Assert.AreEqual(3, actions[2].Id);
-            Assert.AreEqual(2, actions[2].TargetId);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.NoAction);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.CreatureAttack && a.Id == 3 && a.TargetId == 2);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.CreatureAttack && a.Id == 3 && a.TargetId == GameAction.EnemyPlayerId);
         }
 
         [TestMethod]
@@ -101,12 +91,8 @@ namespace CCG.Tests
             });
 
             List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
-
-            Assert.AreEqual(2, actions.Count);
-            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
-            Assert.AreEqual(ActionType.CreatureAttack, actions[1].Type);
-            Assert.AreEqual(3, actions[1].Id);
-            Assert.AreEqual(2, actions[1].TargetId);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.NoAction);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.CreatureAttack && a.Id == 3 && a.TargetId == 2);
         }
 
         [TestMethod]
@@ -121,12 +107,8 @@ namespace CCG.Tests
             });
 
             List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
-
-            Assert.AreEqual(2, actions.Count);
-            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
-            Assert.AreEqual(ActionType.CreatureAttack, actions[1].Type);
-            Assert.AreEqual(3, actions[1].Id);
-            Assert.AreEqual(2, actions[1].TargetId);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.NoAction);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.CreatureAttack && a.Id == 3 && a.TargetId == 2);
         }
 
         #endregion
@@ -142,11 +124,8 @@ namespace CCG.Tests
             });
 
             List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
-
-            Assert.AreEqual(2, actions.Count);
-            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
-            Assert.AreEqual(ActionType.PlayCard, actions[1].Type);
-            Assert.AreEqual(3, actions[1].Id);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.NoAction);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.SummonCreature && a.Id == 3);
         }
 
         [TestMethod]
@@ -160,13 +139,9 @@ namespace CCG.Tests
             });
 
             List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
-
-            Assert.AreEqual(3, actions.Count);
-            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
-            Assert.AreEqual(ActionType.PlayCard, actions[1].Type);
-            Assert.AreEqual(3, actions[1].Id);
-            Assert.AreEqual(ActionType.PlayCard, actions[2].Type);
-            Assert.AreEqual(2, actions[2].Id);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.NoAction);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.SummonCreature && a.Id == 3);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.SummonCreature && a.Id == 2);
         }
         #endregion
 
@@ -183,15 +158,7 @@ namespace CCG.Tests
             });
 
             List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
-
-            Assert.AreEqual(3, actions.Count);
-            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
-            Assert.AreEqual(ActionType.CreatureAttack, actions[1].Type);
-            Assert.AreEqual(2, actions[1].Id);
-            Assert.AreEqual(-1, actions[1].TargetId);
-            Assert.AreEqual(ActionType.UseItem, actions[2].Type);
-            Assert.AreEqual(1, actions[2].Id);
-            Assert.AreEqual(2, actions[2].TargetId);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.UseItem && a.Id == 1 && a.TargetId == 2);
         }
 
         [TestMethod]
@@ -206,9 +173,7 @@ namespace CCG.Tests
             });
 
             List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
-
-            Assert.AreEqual(1, actions.Count);
-            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
+            AssertExt.HasNoItemWithCondition(actions, a => a.Type == ActionType.UseItem);
         }
 
         [TestMethod]
@@ -222,12 +187,7 @@ namespace CCG.Tests
             });
 
             List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
-
-            Assert.AreEqual(2, actions.Count);
-            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
-            Assert.AreEqual(ActionType.UseItem, actions[1].Type);
-            Assert.AreEqual(1, actions[1].Id);
-            Assert.AreEqual(2, actions[1].TargetId);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.UseItem && a.Id == 1 && a.TargetId == 2);
         }
 
         [TestMethod]
@@ -255,12 +215,7 @@ namespace CCG.Tests
             });
 
             List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
-
-            Assert.AreEqual(2, actions.Count);
-            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
-            Assert.AreEqual(ActionType.UseItem, actions[1].Type);
-            Assert.AreEqual(1, actions[1].Id);
-            Assert.AreEqual(-1, actions[1].TargetId);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.UseItem && a.Id == 1 && a.TargetId == GameAction.EnemyPlayerId);
         }
 
         [TestMethod]
@@ -276,7 +231,7 @@ namespace CCG.Tests
             List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
 
             AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.UseItem && a.Id == 1 && a.TargetId == 2);
-            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.UseItem && a.Id == 1 && a.TargetId == -1);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.UseItem && a.Id == 1 && a.TargetId == GameAction.EnemyPlayerId);
         }
 
         [TestMethod]
@@ -290,7 +245,7 @@ namespace CCG.Tests
             });
 
             List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
-            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.UseItem && a.Id == 1 && a.TargetId == -1);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.UseItem && a.Id == 1 && a.TargetId == GameAction.EnemyPlayerId);
         }
 
         #endregion
