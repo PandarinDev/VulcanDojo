@@ -293,9 +293,6 @@ namespace CCG.Tests
             AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.UseItem && a.Id == 1 && a.TargetId == -1);
         }
 
-        // TODO: Dont use green item on enemy
-        // TODO: Dont use red item on player
-
         #endregion
 
         // TODO: Combined tests with more creatures on board and cards in hand
