@@ -9,6 +9,8 @@ namespace CCG.Tests
     [TestClass]
     public class SimulatorTests
     {
+        // TODO: Simulate breakthrough (defenders got it too?), drain
+
         [TestMethod]
         public void SimulateSimpleAttack()
         {

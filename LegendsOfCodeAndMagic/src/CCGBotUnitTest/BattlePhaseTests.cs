@@ -55,16 +55,43 @@ namespace CCG.Tests
         {
             GameState gs = Parse.GameState(new Queue<string>
             {
-                ("30 2 24 25"), ("30 2 24 25"), "6", "1",
+                ("30 2 24 25"), ("30 2 24 25"), "6", "2",
                 "69 3 1 0 3 4 4  B----- 0 0 0",
+                "70 2 1 0 3 2 2  ------ 0 0 0",
             });
 
             List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
 
-            Assert.AreEqual(2, actions.Count);
+            Assert.AreEqual(3, actions.Count);
             Assert.AreEqual(ActionType.NoAction, actions[0].Type);
             Assert.AreEqual(ActionType.CreatureAttackAction, actions[1].Type);
+            Assert.AreEqual(ActionType.CreatureAttackAction, actions[2].Type);
         }
+
+        [TestMethod]
+        public void PossibleAction_AttackTwoTargets()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 2 24 25"), ("30 2 24 25"), "6", "2",
+                "69 3 1 0 3 4 4  B----- 0 0 0",
+                "70 2 -1 0 3 2 2  ------ 0 0 0",
+            });
+
+            List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
+
+            Assert.AreEqual(3, actions.Count);
+            Assert.AreEqual(ActionType.NoAction, actions[0].Type);
+            Assert.AreEqual(ActionType.CreatureAttackAction, actions[1].Type);
+            Assert.AreEqual(3, actions[1].Id);
+            Assert.AreEqual(-1, actions[1].TargetId);
+            Assert.AreEqual(ActionType.CreatureAttackAction, actions[2].Type);
+            Assert.AreEqual(3, actions[2].Id);
+            Assert.AreEqual(2, actions[2].TargetId);
+        }
+
+        // TODO: Attack to guarded minions
+        // TODO: USe items actions
 
         #endregion
 

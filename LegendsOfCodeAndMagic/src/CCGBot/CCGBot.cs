@@ -185,7 +185,11 @@ namespace CCG
                  * 
                  * */
 
-                result.AddRange(gs.MyBoard.Select(c => GameActionFactory.CreatureAttack()));
+                const int enemyPlayerId = -1;
+
+                result.AddRange(gs.MyBoard.Select(c => GameActionFactory.CreatureAttack(c.InstanceId, enemyPlayerId)));
+                result.AddRange(gs.MyBoard.Join(gs.EnemyBoard, _ => true, _ => true, (c, e) => new { Card = c, Enemy = e}) 
+                    .Select(p => GameActionFactory.CreatureAttack(p.Card.InstanceId, p.Enemy.InstanceId)));
                 result.AddRange(gs.MyHand.FindAll(c => c.Cost < gs.MyPlayer.Mana)
                     .Select(c => GameActionFactory.PlayCard(c.InstanceId)));
 
@@ -516,6 +520,7 @@ namespace CCG
     {
         public ActionType Type { get; }
         public int Id { get; }
+        public int TargetId { get; }
 
         public GameAction(ActionType type)
         {
@@ -526,6 +531,11 @@ namespace CCG
         {
             Id = iid;
         }
+
+        public GameAction(ActionType type, int iid, int targetId) : this(type, iid)
+        {
+            TargetId = targetId;
+        }
     }
 
     public static class GameActionFactory
@@ -535,9 +545,9 @@ namespace CCG
             return new GameAction(ActionType.PlayCardAction, iid);
         }
 
-        public static GameAction CreatureAttack()
+        public static GameAction CreatureAttack(int iid, int targetId)
         {
-            return new GameAction(ActionType.CreatureAttackAction);
+            return new GameAction(ActionType.CreatureAttackAction, iid, targetId);
         }
     }
 
