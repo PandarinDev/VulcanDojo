@@ -11,6 +11,21 @@ namespace CCG.Tests
         // TODO: Simulate breakthrough (defenders got it too?), drain
 
         [TestMethod]
+        public void SimulateNoAction()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 4 24 25"), ("30 4 24 25"), "6", "2",
+                "154 1 0 3 2 0 0 ------ 0 -2 1",
+                "70 2 -1 0 2 2 2 ------ 0 0 0",
+            });
+            GameAction a = new GameAction(ActionType.NoAction);
+            GameState result = Simulator.SimulateAction(gs, a);
+            Assert.IsFalse(gs == result);
+            Assert.AreEqual(gs, result);
+        }
+
+        [TestMethod]
         public void SimulateSimpleAttack()
         {
             SimulateAttack(1, 2,  2, 2,  0, 1);

@@ -223,7 +223,7 @@ namespace CCG
 
             public static GameState SimulateAction(GameState gs, GameAction action)
             {
-                return new GameState();
+                return Simulator.SimulateAction(gs, action);
             }
 
             public static double EvaluateGameState(GameState gs)
@@ -391,6 +391,11 @@ namespace CCG
             }
         }
 
+        public static GameState SimulateAction(GameState gs, GameAction a)
+        {
+            return gs.Copy();
+        }
+
         private static void HalfAttack(Card attacker, Card defender)
         {
             if (attacker.AttackValue > 0)
@@ -515,7 +520,6 @@ namespace CCG
             Actions.Add(a);
         }
 
-
         object ICloneable.Clone()
         {
             return this.Clone();
@@ -593,6 +597,48 @@ namespace CCG
         public List<Card> MyHand = new List<Card>();
         public List<Card> MyBoard = new List<Card>();
         public List<Card> EnemyBoard = new List<Card>();
+
+        public GameState Copy()
+        {
+            GameState gs = new GameState()
+            {
+                MyPlayer = MyPlayer.Copy(),
+                EnemyPlayer = EnemyPlayer.Copy(),
+                EnemyHandCount = EnemyHandCount,
+                CardCount = CardCount,
+                MyHand = MyHand.Copy(),
+                MyBoard = MyBoard.Copy(),
+                EnemyBoard = EnemyBoard.Copy()
+            };
+            return gs;
+        }
+
+        public override string ToString()
+        {
+            Func<IEnumerable<Card>, string> listToString = 
+                ((IEnumerable<Card> a) => string.Join("\n", a.Select(c => c.ToString()).ToArray()) );
+            string cards = string.Join("\n", 
+                new string[] { listToString(MyHand), listToString(MyBoard), listToString(EnemyBoard) }
+                .Where(s => !string.IsNullOrEmpty(s)));
+            return $"{MyPlayer}\n{EnemyPlayer}\n{EnemyHandCount}\n{CardCount}\n{cards}";
+        }
+
+        public override bool Equals(object o)
+        {
+            var c = o as GameState;
+            if (c != null)
+            {
+                bool result = MyPlayer != null && MyPlayer.Equals(c.MyPlayer) &&
+                EnemyPlayer != null && EnemyPlayer.Equals(c.EnemyPlayer) &&
+                EnemyHandCount == c.EnemyHandCount &&
+                CardCount == c.CardCount &&
+                MyHand.SequenceEqual(c.MyHand) &&
+                MyBoard.SequenceEqual(c.MyBoard) &&
+                EnemyBoard.SequenceEqual(c.EnemyBoard);
+                return result;
+            }
+            return false;
+        }
     }
 
     public class Gambler
@@ -601,7 +647,28 @@ namespace CCG
         public int Mana { get; set; }
         public int DeckSize { get; set; }
         public int NextRuneThreshold { get; set; }
-        public int Identity { get; set; }
+
+        public Gambler Copy()
+        {
+            return (Gambler)this.MemberwiseClone();
+        }
+
+        public override string ToString()
+        {
+            return $"{Health} {Mana} {DeckSize} {NextRuneThreshold}";
+        }
+
+        public override bool Equals(object o)
+        {
+            var c = o as Gambler;
+            if (c != null)
+            {
+                bool result = Health == c.Health && Mana == c.Mana &&
+                DeckSize == c.DeckSize && NextRuneThreshold == c.NextRuneThreshold;
+                return result;
+            }
+            return false;
+        }
     }
 
     public class Card
@@ -625,6 +692,11 @@ namespace CCG
         public bool HasLethal() => Abilities.Contains("L");
         public void RemoveWard() => Abilities = Abilities.Replace("W", "");
 
+        public Card Copy()
+        {
+            return (Card)this.MemberwiseClone();
+        }
+
         public override string ToString()
         {
             return $"{CardNumber} {InstanceId} {Location} {CardType} {Cost} {AttackValue} {DefenseValue} {Abilities} {MyHealthChange} {OpponentHealthChange} {CardDraw}";
@@ -642,7 +714,7 @@ namespace CCG
                 MyHealthChange == c.MyHealthChange && OpponentHealthChange == c.OpponentHealthChange &&
                 CardDraw == c.CardDraw;
                 return result;
-    }
+            }
             return false;
         }
     }
@@ -673,6 +745,11 @@ namespace CCG
             if (val.CompareTo(min) < 0) return min;
             else if (val.CompareTo(max) > 0) return max;
             else return val;
+        }
+
+        public static List<Card> Copy(this List<Card> val)
+        {
+            return val.Select(c => c.Copy()).ToList();
         }
     }
 
