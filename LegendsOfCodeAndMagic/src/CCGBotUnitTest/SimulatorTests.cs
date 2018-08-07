@@ -86,7 +86,7 @@ namespace CCG.Tests
             Assert.AreEqual(attackerDef, attacker.DefenseValue);
             Assert.AreEqual(defenderDef, defender.DefenseValue);
 
-            Simulator.Attack(attacker, defender);
+            Simulator.AttackCreature(ref attacker, ref defender);
 
             Assert.AreEqual(attackerAfterDef, attacker.DefenseValue);
             Assert.AreEqual(defenderAfterDef, defender.DefenseValue);
@@ -99,8 +99,8 @@ namespace CCG.Tests
             var attacker2 = Parse.Card("120 1  1 1 2 1 2 ------ 0 0 0");
             var defender0 = Parse.Card("121 2 -1 1 2 2 2 ------ 0 0 0");
 
-            Simulator.Attack(attacker1, defender0);
-            Simulator.Attack(attacker2, defender0);
+            Simulator.AttackCreature(ref attacker1, ref defender0);
+            Simulator.AttackCreature(ref attacker2, ref defender0);
 
             Assert.AreEqual(0, attacker1.DefenseValue);
             Assert.AreEqual(2, attacker2.DefenseValue);
@@ -113,7 +113,7 @@ namespace CCG.Tests
             var attacker1 = Parse.Card("120 1  1 1 2 1 2 ------ 0 0 0");
             var defender0 = Parse.Card("120 1  1 1 2 2 2 -----W 0 0 0");
 
-            Simulator.Attack(attacker1, defender0);
+            Simulator.AttackCreature(ref attacker1, ref defender0);
 
             Assert.AreEqual(0, attacker1.DefenseValue);
             Assert.AreEqual(2, defender0.DefenseValue);
@@ -125,7 +125,7 @@ namespace CCG.Tests
             var attacker1 = Parse.Card("120 1  1 1 2 0 2 ------ 0 0 0");
             var defender0 = Parse.Card("120 1  1 1 2 2 2 -----W 0 0 0");
 
-            Simulator.Attack(attacker1, defender0);
+            Simulator.AttackCreature(ref attacker1, ref defender0);
 
             Assert.AreEqual(0, attacker1.DefenseValue);
             Assert.AreEqual(2, defender0.DefenseValue);
@@ -139,8 +139,8 @@ namespace CCG.Tests
             var attacker2 = Parse.Card("120 1  1 1 2 1 2 ------ 0 0 0");
             var defender0 = Parse.Card("120 1  1 1 2 2 2 -----W 0 0 0");
 
-            Simulator.Attack(attacker1, defender0);
-            Simulator.Attack(attacker2, defender0);
+            Simulator.AttackCreature(ref attacker1, ref defender0);
+            Simulator.AttackCreature(ref attacker2, ref defender0);
 
             Assert.AreEqual(0, attacker1.DefenseValue);
             Assert.AreEqual(2, attacker2.DefenseValue);
@@ -154,7 +154,7 @@ namespace CCG.Tests
             var defender0 = Parse.Card("120 1  1 1 2 2 2 ------ 0 0 0");
             Assert.IsTrue(attacker1.HasWard());
 
-            Simulator.Attack(attacker1, defender0);
+            Simulator.AttackCreature(ref attacker1, ref defender0);
 
             Assert.AreEqual(2, attacker1.DefenseValue);
             Assert.IsFalse(attacker1.HasWard());
@@ -168,7 +168,7 @@ namespace CCG.Tests
             var defender0 = Parse.Card("120 1  1 1 2 0 2 ------ 0 0 0");
             Assert.IsTrue(attacker1.HasWard());
 
-            Simulator.Attack(attacker1, defender0);
+            Simulator.AttackCreature(ref attacker1, ref defender0);
 
             Assert.AreEqual(2, attacker1.DefenseValue);
             Assert.IsTrue(attacker1.HasWard());
@@ -181,7 +181,7 @@ namespace CCG.Tests
             var attacker1 = Parse.Card("120 1  1 1 2 1 2 ----L- 0 0 0");
             var defender0 = Parse.Card("120 1  1 1 2 1 2 ------ 0 0 0");
 
-            Simulator.Attack(attacker1, defender0);
+            Simulator.AttackCreature(ref attacker1, ref defender0);
 
             Assert.AreEqual(1, attacker1.DefenseValue);
             Assert.AreEqual(0, defender0.DefenseValue);
@@ -193,7 +193,7 @@ namespace CCG.Tests
             var attacker1 = Parse.Card("120 1  1 1 2 1 2 ----L- 0 0 0");
             var defender0 = Parse.Card("120 1  1 1 2 1 2 -----W 0 0 0");
 
-            Simulator.Attack(attacker1, defender0);
+            Simulator.AttackCreature(ref attacker1, ref defender0);
 
             Assert.AreEqual(1, attacker1.DefenseValue);
             Assert.AreEqual(2, defender0.DefenseValue);

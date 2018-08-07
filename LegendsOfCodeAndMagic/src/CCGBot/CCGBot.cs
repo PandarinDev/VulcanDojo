@@ -390,26 +390,7 @@ namespace CCG
                     break;
                 case ActionType.CreatureAttack:
                     {
-                        var attacker = state.MyBoard.Find(c => c.InstanceId == a.Id);
-                        var defender = state.EnemyBoard.Find(c => c.InstanceId == a.TargetId);
-                        if (defender != null)
-                        {
-                            Attack(attacker, defender);
-                            if (attacker.DefenseValue <= 0)
-                            {
-                                state.MyBoard.Remove(attacker);
-                                state.CardCount -= 1;
-                            }
-                            if (defender.DefenseValue <= 0)
-                            {
-                                state.EnemyBoard.Remove(defender);
-                                state.CardCount -= 1;
-                            }
-                        }
-                        else
-                        {
-                            state.EnemyPlayer.Health -= attacker.AttackValue;
-                        }
+                        AttackAction(ref state, a.Id, a.TargetId);
                     }
                     break;
                 case ActionType.SummonCreature:
@@ -422,6 +403,31 @@ namespace CCG
             return state;
         }
 
+        private static void AttackAction(ref GameState state, int attackerId, int defenderId)
+        {
+            var attacker = state.MyBoard.Find(c => c.InstanceId == attackerId);
+
+            if (defenderId != GameAction.EnemyPlayerId)
+            {
+                var defender = state.EnemyBoard.Find(c => c.InstanceId == defenderId);
+                AttackCreature(ref attacker, ref defender);
+                if (attacker.DefenseValue <= 0)
+                {
+                    state.MyBoard.Remove(attacker);
+                    state.CardCount -= 1;
+                }
+                if (defender.DefenseValue <= 0)
+                {
+                    state.EnemyBoard.Remove(defender);
+                    state.CardCount -= 1;
+                }
+            }
+            else
+            {
+                state.EnemyPlayer.Health -= attacker.AttackValue;
+            }
+        }
+
         /// <summary>
         /// Simulates an attack action between two creatures.
         /// The given cards will be modified, ie their health will change / lose ward
@@ -429,17 +435,17 @@ namespace CCG
         /// </summary>
         /// <param name="attacker"></param>
         /// <param name="defender"></param>
-        public static void Attack(Card attacker, Card defender)
+        public static void AttackCreature(ref Card attacker, ref Card defender)
         {
-            HalfAttack(attacker, defender);
+            HalfAttack(ref attacker, ref defender);
 
             if (!defender.DidAttack)
             {
-                HalfAttack(defender, attacker);
+                HalfAttack(ref defender, ref attacker);
             }
         }
 
-        private static void HalfAttack(Card attacker, Card defender)
+        private static void HalfAttack(ref Card attacker, ref Card defender)
         {
             if (attacker.AttackValue > 0)
             {
