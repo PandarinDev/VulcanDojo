@@ -381,6 +381,48 @@ namespace CCG
 
     public static class Simulator
     {
+        public static GameState SimulateAction(GameState gs, GameAction a)
+        {
+            GameState state = gs.Copy();
+            switch (a.Type)
+            {
+                case ActionType.NoAction:
+                    break;
+                case ActionType.CreatureAttack:
+                    {
+                        var attacker = state.MyBoard.Find(c => c.InstanceId == a.Id);
+                        var defender = state.EnemyBoard.Find(c => c.InstanceId == a.TargetId);
+
+                        Attack(attacker, defender);
+                        if (attacker.DefenseValue <= 0)
+                        {
+                            state.MyBoard.Remove(attacker);
+                            state.CardCount -= 1;
+                        }
+                        if (defender.DefenseValue <= 0)
+                        {
+                            state.EnemyBoard.Remove(defender);
+                            state.CardCount -= 1;
+                        }
+                    }
+                    break;
+                case ActionType.SummonCreature:
+                    break;
+                case ActionType.UseItem:
+                    break;
+                default:
+                    break;
+            }
+            return state;
+        }
+
+        /// <summary>
+        /// Simulates an attack action between two creatures.
+        /// The given cards will be modified, ie their health will change / lose ward
+        /// after this method returns.
+        /// </summary>
+        /// <param name="attacker"></param>
+        /// <param name="defender"></param>
         public static void Attack(Card attacker, Card defender)
         {
             HalfAttack(attacker, defender);
@@ -389,11 +431,6 @@ namespace CCG
             {
                 HalfAttack(defender, attacker);
             }
-        }
-
-        public static GameState SimulateAction(GameState gs, GameAction a)
-        {
-            return gs.Copy();
         }
 
         private static void HalfAttack(Card attacker, Card defender)

@@ -8,6 +8,8 @@ namespace CCG.Tests
     [TestClass]
     public class SimulatorTests
     {
+        // CID, IID, Loc, Type, Cost, Att, Def, Abl, HP, EnemyHP, Draw
+
         // TODO: Simulate breakthrough (defenders got it too?), drain
 
         [TestMethod]
@@ -23,6 +25,26 @@ namespace CCG.Tests
             GameState result = Simulator.SimulateAction(gs, a);
             Assert.IsFalse(gs == result);
             Assert.AreEqual(gs, result);
+        }
+
+        [TestMethod]
+        public void SimulateCreatureAttackAction()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 4 24 25"), ("30 4 24 25"), "6", "2",
+                "17 1 1 0 4 4 5 ------ 0 0 0",
+                "70 2 -1 0 2 2 2 ------ 0 0 0",
+            });
+            GameAction a = GameActionFactory.CreatureAttack(1, 2);
+            GameState result = Simulator.SimulateAction(gs, a);
+
+            GameState expectd = Parse.GameState(new Queue<string>
+            {
+                ("30 4 24 25"), ("30 4 24 25"), "6", "1",
+                "17 1 1 0 4 4 3 ------ 0 0 0",
+            });
+            Assert.AreEqual(expectd, result);
         }
 
         [TestMethod]
