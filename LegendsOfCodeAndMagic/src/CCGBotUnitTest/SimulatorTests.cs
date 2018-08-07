@@ -88,6 +88,67 @@ namespace CCG.Tests
             Assert.AreEqual(expectd, result);
         }
 
+        [TestMethod]
+        public void SimulateCreatureAttackActionDrain()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 4 24 25"), ("30 4 24 25"), "6", "2",
+                "17 1 1 0 4 4 5 --D--- 0 0 0",
+                "70 2 -1 0 2 2 2 ------ 0 0 0",
+            });
+            GameAction a = GameActionFactory.CreatureAttack(1, 2);
+            GameState result = Simulator.SimulateAction(gs, a);
+
+            GameState expectd = Parse.GameState(new Queue<string>
+            {
+                ("32 4 24 25"), ("30 4 24 25"), "6", "1",
+                "17 1 1 0 4 4 3 --D--- 0 0 0",
+            });
+            Assert.AreEqual(expectd, result);
+        }
+
+        [TestMethod]
+        public void SimulateCreatureAttackActionEnemyHasDrain()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 4 24 25"), ("30 4 24 25"), "6", "2",
+                "17 1 1 0 4 4 5 --D--- 0 0 0",
+                "70 2 -1 0 2 2 2 --D--- 0 0 0",
+            });
+            GameAction a = GameActionFactory.CreatureAttack(1, 2);
+            GameState result = Simulator.SimulateAction(gs, a);
+
+            GameState expectd = Parse.GameState(new Queue<string>
+            {
+                ("32 4 24 25"), ("32 4 24 25"), "6", "1",
+                "17 1 1 0 4 4 3 --D--- 0 0 0",
+            });
+            Assert.AreEqual(expectd, result);
+        }
+
+        [TestMethod]
+        public void SimulateCreatureAttackActionAttackPlayerWithDrain()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 4 24 25"), ("30 4 24 25"), "6", "2",
+                "17 1 1 0 4 4 5 --D--- 0 0 0",
+                "70 2 -1 0 2 2 2 ------ 0 0 0",
+            });
+            GameAction a = GameActionFactory.CreatureAttack(1, GameAction.EnemyPlayerId);
+            GameState result = Simulator.SimulateAction(gs, a);
+
+            GameState expectd = Parse.GameState(new Queue<string>
+            {
+                ("34 4 24 25"), ("26 4 24 25"), "6", "2",
+                "17 1 1 0 4 4 5 --D--- 0 0 0",
+                "70 2 -1 0 2 2 2 ------ 0 0 0",
+            });
+            Assert.AreEqual(expectd, result);
+        }
+
 
         #region Simulate create attack tests
         [TestMethod]

@@ -410,6 +410,8 @@ namespace CCG
             if (defenderId != GameAction.EnemyPlayerId)
             {
                 var defender = state.EnemyBoard.Find(c => c.InstanceId == defenderId);
+                int attackerHpBefore = attacker.DefenseValue;
+                int defenderHpBefore = defender.DefenseValue;
                 AttackCreature(ref attacker, ref defender);
                 if (attacker.DefenseValue <= 0)
                 {
@@ -425,10 +427,21 @@ namespace CCG
                         state.EnemyPlayer.Health += defender.DefenseValue;
                     }
                 }
+                Drain(ref state.MyPlayer, attacker, Math.Max(0, defenderHpBefore - Math.Max(0, defender.DefenseValue)));
+                Drain(ref state.EnemyPlayer, defender, attackerHpBefore - Math.Max(0, attacker.DefenseValue));
             }
             else
             {
                 state.EnemyPlayer.Health -= attacker.AttackValue;
+                Drain(ref state.MyPlayer, attacker, attacker.AttackValue);
+            }
+        }
+
+        private static void Drain(ref Gambler healedPlayer, Card attacker, int amount)
+        {
+            if (attacker.HasDrain())
+            {
+                healedPlayer.Health += Math.Max(0, amount);
             }
         }
 
@@ -741,6 +754,7 @@ namespace CCG
         public bool DidAttack { get; set; } = false;
 
         public bool HasBreakthrough() => Abilities.Contains("B");
+        public bool HasDrain() => Abilities.Contains("D");
         public bool HasGuard() => Abilities.Contains("G");
         public bool HasWard() => Abilities.Contains("W");
         public bool HasLethal() => Abilities.Contains("L");
