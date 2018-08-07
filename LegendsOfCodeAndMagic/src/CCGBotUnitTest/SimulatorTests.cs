@@ -10,7 +10,7 @@ namespace CCG.Tests
     {
         // CID, IID, Loc, Type, Cost, Att, Def, Abl, HP, EnemyHP, Draw
 
-        // TODO: Simulate breakthrough (defenders got it too? Nope, Its only for the attacker), drain
+        // TODO: Simulate drain
 
         [TestMethod]
         public void SimulateNoAction()
