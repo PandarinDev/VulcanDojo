@@ -10,7 +10,7 @@ namespace CCG.Tests
     {
         // CID, IID, Loc, Type, Cost, Att, Def, Abl, HP, EnemyHP, Draw
 
-        // TODO: Simulate drain
+        // TODO: Simulate item use, creature summon
 
         [TestMethod]
         public void SimulateNoAction()
