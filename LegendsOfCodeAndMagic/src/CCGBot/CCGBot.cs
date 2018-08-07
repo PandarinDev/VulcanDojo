@@ -420,6 +420,10 @@ namespace CCG
                 {
                     state.EnemyBoard.Remove(defender);
                     state.CardCount -= 1;
+                    if (attacker.HasBreakthrough())
+                    {
+                        state.EnemyPlayer.Health += defender.DefenseValue;
+                    }
                 }
             }
             else
@@ -736,6 +740,7 @@ namespace CCG
 
         public bool DidAttack { get; set; } = false;
 
+        public bool HasBreakthrough() => Abilities.Contains("B");
         public bool HasGuard() => Abilities.Contains("G");
         public bool HasWard() => Abilities.Contains("W");
         public bool HasLethal() => Abilities.Contains("L");

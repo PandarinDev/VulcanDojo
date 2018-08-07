@@ -69,6 +69,28 @@ namespace CCG.Tests
         }
 
         [TestMethod]
+        public void SimulateCreatureAttackActionBreakthrough()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 4 24 25"), ("30 4 24 25"), "6", "2",
+                "17 1 1 0 4 4 5 B----- 0 0 0",
+                "70 2 -1 0 2 2 2 ------ 0 0 0",
+            });
+            GameAction a = GameActionFactory.CreatureAttack(1, 2);
+            GameState result = Simulator.SimulateAction(gs, a);
+
+            GameState expectd = Parse.GameState(new Queue<string>
+            {
+                ("30 4 24 25"), ("28 4 24 25"), "6", "1",
+                "17 1 1 0 4 4 3 B----- 0 0 0",
+            });
+            Assert.AreEqual(expectd, result);
+        }
+
+
+        #region Simulate create attack tests
+        [TestMethod]
         public void SimulateSimpleAttack()
         {
             SimulateAttack(1, 2,  2, 2,  0, 1);
@@ -199,5 +221,6 @@ namespace CCG.Tests
             Assert.AreEqual(2, defender0.DefenseValue);
             Assert.IsFalse(defender0.HasWard());
         }
+        #endregion
     }
 }
