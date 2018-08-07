@@ -392,17 +392,23 @@ namespace CCG
                     {
                         var attacker = state.MyBoard.Find(c => c.InstanceId == a.Id);
                         var defender = state.EnemyBoard.Find(c => c.InstanceId == a.TargetId);
-
-                        Attack(attacker, defender);
-                        if (attacker.DefenseValue <= 0)
+                        if (defender != null)
                         {
-                            state.MyBoard.Remove(attacker);
-                            state.CardCount -= 1;
+                            Attack(attacker, defender);
+                            if (attacker.DefenseValue <= 0)
+                            {
+                                state.MyBoard.Remove(attacker);
+                                state.CardCount -= 1;
+                            }
+                            if (defender.DefenseValue <= 0)
+                            {
+                                state.EnemyBoard.Remove(defender);
+                                state.CardCount -= 1;
+                            }
                         }
-                        if (defender.DefenseValue <= 0)
+                        else
                         {
-                            state.EnemyBoard.Remove(defender);
-                            state.CardCount -= 1;
+                            state.EnemyPlayer.Health -= attacker.AttackValue;
                         }
                     }
                     break;

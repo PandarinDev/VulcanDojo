@@ -10,7 +10,7 @@ namespace CCG.Tests
     {
         // CID, IID, Loc, Type, Cost, Att, Def, Abl, HP, EnemyHP, Draw
 
-        // TODO: Simulate breakthrough (defenders got it too?), drain
+        // TODO: Simulate breakthrough (defenders got it too? Nope, Its only for the attacker), drain
 
         [TestMethod]
         public void SimulateNoAction()
@@ -28,7 +28,7 @@ namespace CCG.Tests
         }
 
         [TestMethod]
-        public void SimulateCreatureAttackAction()
+        public void SimulateCreatureAttackCreatureAction()
         {
             GameState gs = Parse.GameState(new Queue<string>
             {
@@ -43,6 +43,27 @@ namespace CCG.Tests
             {
                 ("30 4 24 25"), ("30 4 24 25"), "6", "1",
                 "17 1 1 0 4 4 3 ------ 0 0 0",
+            });
+            Assert.AreEqual(expectd, result);
+        }
+
+        [TestMethod]
+        public void SimulateCreatureAttackPlayerAction()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 4 24 25"), ("30 4 24 25"), "6", "2",
+                "17 1 1 0 4 4 5 ------ 0 0 0",
+                "70 2 -1 0 2 2 2 ------ 0 0 0",
+            });
+            GameAction a = GameActionFactory.CreatureAttack(1, GameAction.EnemyPlayerId);
+            GameState result = Simulator.SimulateAction(gs, a);
+
+            GameState expectd = Parse.GameState(new Queue<string>
+            {
+                ("30 4 24 25"), ("26 4 24 25"), "6", "2",
+                "17 1 1 0 4 4 5 ------ 0 0 0",
+                "70 2 -1 0 2 2 2 ------ 0 0 0",
             });
             Assert.AreEqual(expectd, result);
         }
