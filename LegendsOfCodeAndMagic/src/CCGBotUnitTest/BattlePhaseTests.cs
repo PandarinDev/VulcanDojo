@@ -49,6 +49,20 @@ namespace CCG.Tests
         }
 
         [TestMethod]
+        public void PossibleAction_AttackPassive()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 2 24 25"), ("30 2 24 25"), "6", "1",
+                "69 3 2 0 3 4 4  ------ 0 0 0",
+            });
+
+            List<GameAction> actions = BattlePhase.GraphSolver.GetPossibleActions(gs);
+            AssertExt.HasUniqueItem(actions, a => a.Type == ActionType.NoAction);
+            AssertExt.HasNoItemWithCondition(actions, a => a.Type == ActionType.CreatureAttack);
+        }
+
+        [TestMethod]
         public void PossibleAction_AttackWithTwo()
         {
             GameState gs = Parse.GameState(new Queue<string>

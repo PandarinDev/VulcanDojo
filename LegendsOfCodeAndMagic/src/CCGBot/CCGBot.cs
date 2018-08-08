@@ -389,11 +389,10 @@ namespace CCG
                 case ActionType.NoAction:
                     break;
                 case ActionType.CreatureAttack:
-                    {
-                        AttackAction(ref state, a.Id, a.TargetId);
-                    }
+                    AttackAction(ref state, a.Id, a.TargetId);
                     break;
                 case ActionType.SummonCreature:
+                    SummonCreatureAction(ref state, a.Id);
                     break;
                 case ActionType.UseItem:
                     break;
@@ -477,6 +476,15 @@ namespace CCG
             }
             attacker.DidAttack = true;
         }
+
+        private static void SummonCreatureAction(ref GameState state, int creatureId)
+        {
+            var toSummon = state.MyHand.Find(c => c.InstanceId == creatureId);
+            state.PassiveCards.Add(toSummon);
+            state.MyHand.Remove(toSummon);
+            state.MyPlayer.Mana -= toSummon.Cost;
+            toSummon.Location = BoardLocation.PlayerSidePassive;
+        }
     }
 
     public static class Parse
@@ -522,6 +530,9 @@ namespace CCG
                         break;
                     case BoardLocation.PlayerSide:
                         gs.MyBoard.Add(card);
+                        break;
+                    case BoardLocation.PlayerSidePassive:
+                        gs.PassiveCards.Add(card);
                         break;
                 }
             }
@@ -663,6 +674,7 @@ namespace CCG
         public List<Card> MyHand = new List<Card>();
         public List<Card> MyBoard = new List<Card>();
         public List<Card> EnemyBoard = new List<Card>();
+        public List<Card> PassiveCards = new List<Card>();
 
         public GameState Copy()
         {
@@ -674,7 +686,8 @@ namespace CCG
                 CardCount = CardCount,
                 MyHand = MyHand.Copy(),
                 MyBoard = MyBoard.Copy(),
-                EnemyBoard = EnemyBoard.Copy()
+                EnemyBoard = EnemyBoard.Copy(),
+                PassiveCards = PassiveCards.Copy()
             };
             return gs;
         }
@@ -684,7 +697,7 @@ namespace CCG
             Func<IEnumerable<Card>, string> listToString = 
                 ((IEnumerable<Card> a) => string.Join("\n", a.Select(c => c.ToString()).ToArray()) );
             string cards = string.Join("\n", 
-                new string[] { listToString(MyHand), listToString(MyBoard), listToString(EnemyBoard) }
+                new string[] { listToString(MyHand), listToString(MyBoard), listToString(EnemyBoard), listToString(PassiveCards) }
                 .Where(s => !string.IsNullOrEmpty(s)));
             return $"{MyPlayer}\n{EnemyPlayer}\n{EnemyHandCount}\n{CardCount}\n{cards}";
         }
@@ -700,7 +713,8 @@ namespace CCG
                 CardCount == c.CardCount &&
                 MyHand.SequenceEqual(c.MyHand) &&
                 MyBoard.SequenceEqual(c.MyBoard) &&
-                EnemyBoard.SequenceEqual(c.EnemyBoard);
+                EnemyBoard.SequenceEqual(c.EnemyBoard) &&
+                PassiveCards.SequenceEqual(c.PassiveCards);
                 return result;
             }
             return false;
@@ -792,7 +806,8 @@ namespace CCG
     {
         EnemySide = -1,
         InHand = 0,
-        PlayerSide = 1
+        PlayerSide = 1,
+        PlayerSidePassive = 2
     }
 
     public enum CardType
