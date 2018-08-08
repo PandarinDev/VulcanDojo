@@ -152,7 +152,6 @@ namespace CCG.Tests
 
         #region simulate summon creature action tests
 
-
         [TestMethod]
         public void SimulateSummonCreatureAction()
         {
@@ -174,7 +173,26 @@ namespace CCG.Tests
             Assert.AreEqual(expectd, result);
         }
 
+        [TestMethod]
+        public void SimulateSummonCreatureActionCharge()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 4 24 25"), ("30 4 24 25"), "6", "2",
+                "17 1 0 0 4 4 5 -C---- 0 0 0",
+                "70 2 -1 0 2 2 2 ------ 0 0 0",
+            });
+            GameAction a = GameActionFactory.SummonCreature(1);
+            GameState result = Simulator.SimulateAction(gs, a);
 
+            GameState expectd = Parse.GameState(new Queue<string>
+            {
+                ("30 0 24 25"), ("30 4 24 25"), "6", "2",
+                "17 1 1 0 4 4 5 -C---- 0 0 0",
+                "70 2 -1 0 2 2 2 ------ 0 0 0",
+            });
+            Assert.AreEqual(expectd, result);
+        }
 
         #endregion
 

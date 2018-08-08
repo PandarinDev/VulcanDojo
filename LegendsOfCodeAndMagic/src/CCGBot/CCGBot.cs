@@ -480,10 +480,19 @@ namespace CCG
         private static void SummonCreatureAction(ref GameState state, int creatureId)
         {
             var toSummon = state.MyHand.Find(c => c.InstanceId == creatureId);
-            state.PassiveCards.Add(toSummon);
-            state.MyHand.Remove(toSummon);
             state.MyPlayer.Mana -= toSummon.Cost;
-            toSummon.Location = BoardLocation.PlayerSidePassive;
+            state.MyHand.Remove(toSummon);
+
+            if (toSummon.HasCharge())
+            {
+                state.MyBoard.Add(toSummon);
+                toSummon.Location = BoardLocation.PlayerSide;
+            }
+            else
+            {
+                state.PassiveCards.Add(toSummon);
+                toSummon.Location = BoardLocation.PlayerSidePassive;
+            }
         }
     }
 
@@ -768,6 +777,7 @@ namespace CCG
         public bool DidAttack { get; set; } = false;
 
         public bool HasBreakthrough() => Abilities.Contains("B");
+        public bool HasCharge() => Abilities.Contains("C");
         public bool HasDrain() => Abilities.Contains("D");
         public bool HasGuard() => Abilities.Contains("G");
         public bool HasWard() => Abilities.Contains("W");
