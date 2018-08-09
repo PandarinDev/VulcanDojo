@@ -452,33 +452,67 @@ namespace CCG
             state.MyHand.Remove(item);
             state.CardCount -= 1;
 
-            var creature = state.MyBoard.Find(c => c.InstanceId == targetId);
-            creature.AttackValue += item.AttackValue;
-            creature.DefenseValue += item.DefenseValue;
+            if (item.CardType == CardType.GreenItem)
+            {
+                var creature = state.MyBoard.Find(c => c.InstanceId == targetId);
+                creature.AttackValue += item.AttackValue;
+                creature.DefenseValue += item.DefenseValue;
 
-            if (item.HasBreakthrough())
-            {
-                creature.AddBreakthrough();
+                if (item.HasBreakthrough())
+                {
+                    creature.AddBreakthrough();
+                }
+                if (item.HasCharge())
+                {
+                    creature.AddCharge();
+                }
+                if (item.HasDrain())
+                {
+                    creature.AddDrain();
+                }
+                if (item.HasGuard())
+                {
+                    creature.AddGuard();
+                }
+                if (item.HasLethal())
+                {
+                    creature.AddLethal();
+                }
+                if (item.HasWard())
+                {
+                    creature.AddWard();
+                }
             }
-            if (item.HasCharge())
+            else if(item.CardType == CardType.RedItem)
             {
-                creature.AddCharge();
-            }
-            if (item.HasDrain())
-            {
-                creature.AddDrain();
-            }
-            if (item.HasGuard())
-            {
-                creature.AddGuard();
-            }
-            if (item.HasLethal())
-            {
-                creature.AddLethal();
-            }
-            if (item.HasWard())
-            {
-                creature.AddWard();
+                var creature = state.EnemyBoard.Find(c => c.InstanceId == targetId);
+                creature.AttackValue += item.AttackValue;
+                creature.DefenseValue += item.DefenseValue;
+
+                if (item.HasBreakthrough())
+                {
+                    creature.RemoveBreakthrough();
+                }
+                if (item.HasCharge())
+                {
+                    creature.RemoveCharge();
+                }
+                if (item.HasDrain())
+                {
+                    creature.RemoveDrain();
+                }
+                if (item.HasGuard())
+                {
+                    creature.RemoveGuard();
+                }
+                if (item.HasLethal())
+                {
+                    creature.RemoveLethal();
+                }
+                if (item.HasWard())
+                {
+                    creature.RemoveWard();
+                }
             }
         }
 
@@ -828,7 +862,14 @@ namespace CCG
         public void AddLethal() => Abilities = Abilities.Substring(0,4) + 'L' + Abilities.Substring(5);
         public void AddWard() => Abilities = Abilities.Substring(0,5) + 'W';
 
-        public void RemoveWard() => Abilities = Abilities.Replace("W", "");
+
+        public void RemoveBreakthrough() => RemoveAbilty("B");
+        public void RemoveCharge() => RemoveAbilty("C");
+        public void RemoveDrain() => RemoveAbilty("D");
+        public void RemoveGuard() => RemoveAbilty("G");
+        public void RemoveLethal() => RemoveAbilty("L");
+        public void RemoveWard() => RemoveAbilty("W");
+        private void RemoveAbilty(string sign) => Abilities = Abilities.Replace(sign, "-");
 
         public Card Copy()
         {
