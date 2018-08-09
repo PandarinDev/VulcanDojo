@@ -239,7 +239,25 @@ namespace CCG.Tests
             Assert.AreEqual(expectd, result);
         }
 
-        // TODO: test green item heal player
+        [TestMethod]
+        public void SimulateUseItemActionGreenHealPlayer()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 6 24 25"), ("30 6 24 25"), "6", "2",
+                "17 1 1 0 4 4 5 ---G-- 0 0 0",
+                "119 2 0 1 3 0 1 -----W 3 0 0",
+            });
+            GameAction a = GameActionFactory.UseItem(2, 1);
+            GameState result = Simulator.SimulateAction(gs, a);
+
+            GameState expectd = Parse.GameState(new Queue<string>
+            {
+                ("33 3 24 25"), ("30 6 24 25"), "6", "1",
+                "17 1 1 0 4 4 6 ---G-W 0 0 0"
+            });
+            Assert.AreEqual(expectd, result);
+        }
 
         [TestMethod]
         public void SimulateUseItemActionRed()
@@ -281,7 +299,25 @@ namespace CCG.Tests
             Assert.AreEqual(expectd, result);
         }
 
-        // TODO: test red item damage/heal player
+        [TestMethod]
+        public void SimulateUseItemActionRedDamagePlayer()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 6 24 25"), ("30 6 24 25"), "6", "2",
+                "17 1 -1 0 4 4 5 BCDGLW 0 0 0",
+                "119 2 0 2 4 0 -2 -----W 3 -1 0",
+            });
+            GameAction a = GameActionFactory.UseItem(2, 1);
+            GameState result = Simulator.SimulateAction(gs, a);
+
+            GameState expectd = Parse.GameState(new Queue<string>
+            {
+                ("33 2 24 25"), ("29 6 24 25"), "6", "1",
+                "17 1 -1 0 4 4 3 BCDGL- 0 0 0"
+            });
+            Assert.AreEqual(expectd, result);
+        }
 
 
         #endregion

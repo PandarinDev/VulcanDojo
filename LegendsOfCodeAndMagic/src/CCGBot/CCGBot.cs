@@ -75,7 +75,7 @@ namespace CCG
             value += card.CardDraw;
             value += card.Abilities.Replace("-", "").Replace("C", "C2").Replace("W", "W2").Length * 0.5;
             value += (double)card.MyHealthChange / 3;
-            value -= (double)card.OpponentHealthChange / 3;
+            value -= (double)card.EnemyHealthChange / 3;
             value -= card.Cost * 2;
             //marginal penalty
             if (card.Cost == 0 || card.AttackValue == 0)
@@ -452,6 +452,9 @@ namespace CCG
             state.MyHand.Remove(item);
             state.CardCount -= 1;
 
+            state.MyPlayer.Health += item.MyHealthChange;
+            state.EnemyPlayer.Health += item.EnemyHealthChange;
+
             if (item.CardType == CardType.GreenItem)
             {
                 var creature = state.MyBoard.Find(c => c.InstanceId == targetId);
@@ -649,7 +652,7 @@ namespace CCG
                 DefenseValue = int.Parse(inputs[6]),
                 Abilities = inputs[7],
                 MyHealthChange = int.Parse(inputs[8]),
-                OpponentHealthChange = int.Parse(inputs[9]),
+                EnemyHealthChange = int.Parse(inputs[9]),
                 CardDraw = int.Parse(inputs[10])
             };
             return card;
@@ -843,7 +846,7 @@ namespace CCG
         public int DefenseValue { get; set; }
         public string Abilities { get; set; }
         public int MyHealthChange { get; set; }
-        public int OpponentHealthChange { get; set; }
+        public int EnemyHealthChange { get; set; }
         public int CardDraw { get; set; }
 
         public bool DidAttack { get; set; } = false;
@@ -878,7 +881,7 @@ namespace CCG
 
         public override string ToString()
         {
-            return $"{CardNumber} {InstanceId} {Location} {CardType} {Cost} {AttackValue} {DefenseValue} {Abilities} {MyHealthChange} {OpponentHealthChange} {CardDraw}";
+            return $"{CardNumber} {InstanceId} {Location} {CardType} {Cost} {AttackValue} {DefenseValue} {Abilities} {MyHealthChange} {EnemyHealthChange} {CardDraw}";
         }
 
         public override bool Equals(object o)
@@ -890,7 +893,7 @@ namespace CCG
                 Location == c.Location && CardType == c.CardType &&
                 Cost == c.Cost && AttackValue == c.AttackValue &&
                 DefenseValue == c.DefenseValue && Abilities == c.Abilities &&
-                MyHealthChange == c.MyHealthChange && OpponentHealthChange == c.OpponentHealthChange &&
+                MyHealthChange == c.MyHealthChange && EnemyHealthChange == c.EnemyHealthChange &&
                 CardDraw == c.CardDraw;
                 return result;
             }
