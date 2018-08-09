@@ -486,7 +486,8 @@ namespace CCG
                     creature.AddWard();
                 }
             }
-            else if(item.CardType == CardType.RedItem)
+            else if(item.CardType == CardType.RedItem || 
+                (item.CardType == CardType.BlueItem && targetId != GameAction.EnemyPlayerId))
             {
                 var creature = state.EnemyBoard.Find(c => c.InstanceId == targetId);
                 creature.AttackValue += item.AttackValue;

@@ -319,6 +319,63 @@ namespace CCG.Tests
             Assert.AreEqual(expectd, result);
         }
 
+        [TestMethod]
+        public void SimulateUseItemActionBlue()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 6 24 25"), ("30 6 24 25"), "6", "2",
+                "17 1 -1 0 4 4 5 ------ 0 0 0",
+                "119 2 0 3 3 -1 -1 ------ 0 -2 0",
+            });
+            GameAction a = GameActionFactory.UseItem(2, 1);
+            GameState result = Simulator.SimulateAction(gs, a);
+
+            GameState expectd = Parse.GameState(new Queue<string>
+            {
+                ("30 3 24 25"), ("28 6 24 25"), "6", "1",
+                "17 1 -1 0 4 3 4 ------ 0 0 0"
+            });
+            Assert.AreEqual(expectd, result);
+        }
+
+        [TestMethod]
+        public void SimulateUseItemActionBlueOnPlayer()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 6 24 25"), ("30 6 24 25"), "6", "2",
+                "17 1 -1 0 4 4 5 ------ 0 0 0",
+                "119 2 0 3 3 -1 -1 ------ 0 -2 0",
+            });
+            GameAction a = GameActionFactory.UseItem(2, GameAction.EnemyPlayerId);
+            GameState result = Simulator.SimulateAction(gs, a);
+
+            GameState expectd = Parse.GameState(new Queue<string>
+            {
+                ("30 3 24 25"), ("28 6 24 25"), "6", "1",
+                "17 1 -1 0 4 4 5 ------ 0 0 0"
+            });
+            Assert.AreEqual(expectd, result);
+        }
+
+        [TestMethod]
+        public void SimulateUseItemActionBlueHealDamagePlayer()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 6 24 25"), ("30 6 24 25"), "6", "1",
+                "119 2 0 3 5 -1 -1 ------ 2 -2 0",
+            });
+            GameAction a = GameActionFactory.UseItem(2, GameAction.EnemyPlayerId);
+            GameState result = Simulator.SimulateAction(gs, a);
+
+            GameState expectd = Parse.GameState(new Queue<string>
+            {
+                ("32 1 24 25"), ("28 6 24 25"), "6", "0"
+            });
+            Assert.AreEqual(expectd, result);
+        }
 
         #endregion
 
