@@ -201,18 +201,21 @@ namespace CCG
                         .Select(p => GameActionFactory.CreatureAttack(p.Card, p.Enemy)));
                 }
 
-                var creaturesInHand = gs.MyHand.FindAll(c => c.CardType == CardType.Creature && c.Cost < gs.MyPlayer.Mana);
-                var itemsInHand = gs.MyHand.FindAll(c => c.CardType != CardType.Creature && c.Cost < gs.MyPlayer.Mana);
+                var creaturesInHand = gs.MyHand.FindAll(c => c.CardType == CardType.Creature && c.Cost <= gs.MyPlayer.Mana);
+                var itemsInHand = gs.MyHand.FindAll(c => c.CardType != CardType.Creature && c.Cost <= gs.MyPlayer.Mana);
 
                 result.AddRange(itemsInHand.FindAll(i => i.CardType == CardType.GreenItem)
                     .Join(gs.MyBoard, _ => true, _=> true, (i, t) => new { Item=i.InstanceId, Target=t.InstanceId})
                     .Select(p=> GameActionFactory.UseItem(p.Item, p.Target)));
+
                 result.AddRange(itemsInHand.FindAll(i => i.CardType == CardType.RedItem)
                     .Join(gs.EnemyBoard, _ => true, _ => true, (i, t) => new { Item = i.InstanceId, Target = t.InstanceId })
                     .Select(p => GameActionFactory.UseItem(p.Item, p.Target)));
+
                 result.AddRange(itemsInHand.FindAll(i => i.CardType == CardType.BlueItem && i.DefenseValue != 0)
                     .Join(gs.EnemyBoard, _ => true, _ => true, (i, t) => new { Item = i.InstanceId, Target = t.InstanceId })
                     .Select(p => GameActionFactory.UseItem(p.Item, p.Target)));
+
                 result.AddRange(itemsInHand.FindAll(i => i.CardType == CardType.BlueItem)
                     .Select(p => GameActionFactory.UseItem(p.InstanceId, GameAction.EnemyPlayerId)));
 

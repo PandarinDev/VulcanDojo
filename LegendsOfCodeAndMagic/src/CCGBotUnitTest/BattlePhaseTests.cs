@@ -238,7 +238,7 @@ namespace CCG.Tests
             GameState gs = Parse.GameState(new Queue<string>
             {
                 ("30 4 24 25"), ("30 4 24 25"), "6", "2",
-                "157 1 0 3 3 0 -1 ------ 1 0 1",
+                "157 1 0 3 4 0 -1 ------ 1 0 1",
                 "70 2 -1 0 2 2 2  ------ 0 0 0",
             });
 
