@@ -151,7 +151,11 @@ namespace CCG
                     GameState gs = state.Item1;
                     ActionSequence toState = state.Item2;
 
-                    // could put this to separate step
+                    if(DidWinGame(gs))
+                    {
+                        return toState;
+                    }
+
                     double value = EvaluateGameState(gs);
                     if(value > bestValue)
                     {
@@ -226,9 +230,22 @@ namespace CCG
                 return Simulator.SimulateAction(gs, action);
             }
 
+            public static bool DidWinGame(GameState gs)
+            {
+                return gs.EnemyPlayer.Health <= 0;
+            }
+
             public static double EvaluateGameState(GameState gs)
             {
-                return 0.0;
+                // TODO: Better evaluation function
+                // An evaluation function is the hardest and most important part of an AI
+                double result = 0.0;
+                result += gs.MyPlayer.Health;
+                result -= gs.EnemyPlayer.Health;
+                result += gs.MyBoard.Count;
+                result += gs.MyBoard.Sum(c => c.AttackValue+c.DefenseValue);
+                result -= gs.EnemyBoard.Sum(c => c.AttackValue + c.DefenseValue);
+                return result;
             }
         }
 
