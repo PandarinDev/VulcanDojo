@@ -60,7 +60,6 @@ namespace CCG
                     maxValue = cardValue;
                     bestPickIndex = i;
                 }
-                //Console.Error.WriteLine(cardList[i].cardNumber + " " + cardValue);
             }
             CurveAdd(picks[bestPickIndex].Cost, curve);
             return "PICK " + bestPickIndex;
@@ -682,7 +681,8 @@ namespace CCG
 
         public override string ToString()
         {
-            return "Not implemetned";
+            string actions = string.Join(";", Actions.Select(a => a.ToString()));
+            return actions;
         }
 
         public ActionSequence Extended(GameAction a)
@@ -728,7 +728,7 @@ namespace CCG
 
         public ActionType Type { get; }
         public int Id { get; }
-        public int TargetId { get; }
+        public int TargetId { get; } = EnemyPlayerId;
 
         public GameAction(ActionType type)
         {
@@ -743,6 +743,21 @@ namespace CCG
         public GameAction(ActionType type, int iid, int targetId) : this(type, iid)
         {
             TargetId = targetId;
+        }
+
+        public override string ToString()
+        {
+            switch (Type)
+            {
+                case ActionType.CreatureAttack:
+                    return $"ATTACK {Id} {TargetId}";
+                case ActionType.SummonCreature:
+                    return $"SUMMON {Id}";
+                case ActionType.UseItem:
+                    return $"USE {Id} {TargetId}";
+                default:
+                    return "PASS";
+            }
         }
     }
 
