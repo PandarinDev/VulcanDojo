@@ -455,6 +455,31 @@ namespace CCG
             var creature = state.MyBoard.Find(c => c.InstanceId == targetId);
             creature.AttackValue += item.AttackValue;
             creature.DefenseValue += item.DefenseValue;
+
+            if (item.HasBreakthrough())
+            {
+                creature.AddBreakthrough();
+            }
+            if (item.HasCharge())
+            {
+                creature.AddCharge();
+            }
+            if (item.HasDrain())
+            {
+                creature.AddDrain();
+            }
+            if (item.HasGuard())
+            {
+                creature.AddGuard();
+            }
+            if (item.HasLethal())
+            {
+                creature.AddLethal();
+            }
+            if (item.HasWard())
+            {
+                creature.AddWard();
+            }
         }
 
         /// <summary>
@@ -793,8 +818,16 @@ namespace CCG
         public bool HasCharge() => Abilities.Contains("C");
         public bool HasDrain() => Abilities.Contains("D");
         public bool HasGuard() => Abilities.Contains("G");
-        public bool HasWard() => Abilities.Contains("W");
         public bool HasLethal() => Abilities.Contains("L");
+        public bool HasWard() => Abilities.Contains("W");
+
+        public void AddBreakthrough() => Abilities = 'B' + Abilities.Substring(1);
+        public void AddCharge() => Abilities = Abilities.Substring(0,1) + 'C' + Abilities.Substring(2);
+        public void AddDrain() => Abilities = Abilities.Substring(0,2) + 'D' + Abilities.Substring(3);
+        public void AddGuard() => Abilities = Abilities.Substring(0,3) + 'G' + Abilities.Substring(4);
+        public void AddLethal() => Abilities = Abilities.Substring(0,4) + 'L' + Abilities.Substring(5);
+        public void AddWard() => Abilities = Abilities.Substring(0,5) + 'W';
+
         public void RemoveWard() => Abilities = Abilities.Replace("W", "");
 
         public Card Copy()

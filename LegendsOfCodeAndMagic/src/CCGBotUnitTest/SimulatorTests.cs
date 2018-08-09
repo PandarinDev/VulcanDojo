@@ -199,7 +199,6 @@ namespace CCG.Tests
 
         #region simulate use item action tests
 
-
         [TestMethod]
         public void SimulateUseItemActionGreen()
         {
@@ -216,6 +215,26 @@ namespace CCG.Tests
             {
                 ("30 3 24 25"), ("30 4 24 25"), "6", "1",
                 "17 1 1 0 4 5 7 -C---- 0 0 0"
+            });
+            Assert.AreEqual(expectd, result);
+        }
+
+        [TestMethod]
+        public void SimulateUseItemActionGreenAbilityBuff()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 6 24 25"), ("30 6 24 25"), "6", "2",
+                "17 1 1 0 4 4 5 ------ 0 0 0",
+                "119 2 0 1 6 0 0 BCDGLW 0 0 0",
+            });
+            GameAction a = GameActionFactory.UseItem(2, 1);
+            GameState result = Simulator.SimulateAction(gs, a);
+
+            GameState expectd = Parse.GameState(new Queue<string>
+            {
+                ("30 0 24 25"), ("30 6 24 25"), "6", "1",
+                "17 1 1 0 4 4 5 BCDGLW 0 0 0"
             });
             Assert.AreEqual(expectd, result);
         }
