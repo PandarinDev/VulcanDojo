@@ -171,10 +171,7 @@ namespace CCG
 
             public static List<GameAction> GetPossibleActions(GameState gs)
             {
-                var result = new List<GameAction>()
-                {
-                    new GameAction(ActionType.NoAction) // Doing nothing is always a valid action
-                };
+                var result = new List<GameAction>();
 
                 /* Possible actions are: 
                  * - attacking with creature to 
@@ -389,8 +386,6 @@ namespace CCG
             GameState state = gs.Copy();
             switch (a.Type)
             {
-                case ActionType.NoAction:
-                    break;
                 case ActionType.CreatureAttack:
                     AttackAction(ref state, a.Id, a.TargetId);
                     break;
@@ -705,7 +700,6 @@ namespace CCG
 
     public enum ActionType
     {
-        NoAction,
         CreatureAttack,
         SummonCreature,
         UseItem
