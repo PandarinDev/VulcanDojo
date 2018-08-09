@@ -196,6 +196,34 @@ namespace CCG.Tests
 
         #endregion
 
+
+        #region simulate use item action tests
+
+
+        [TestMethod]
+        public void SimulateUseItemActionGreen()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("30 4 24 25"), ("30 4 24 25"), "6", "2",
+                "17 1 1 0 4 4 5 -C---- 0 0 0",
+                "119 2 0 1 1 1 2  ------ 0 0 0",
+            });
+            GameAction a = GameActionFactory.UseItem(2, 1);
+            GameState result = Simulator.SimulateAction(gs, a);
+
+            GameState expectd = Parse.GameState(new Queue<string>
+            {
+                ("30 3 24 25"), ("30 4 24 25"), "6", "1",
+                "17 1 1 0 4 5 7 -C---- 0 0 0"
+            });
+            Assert.AreEqual(expectd, result);
+        }
+
+
+        #endregion
+
+
         #region Simulate create attack tests
         [TestMethod]
         public void SimulateSimpleAttack()

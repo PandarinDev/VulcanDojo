@@ -395,6 +395,7 @@ namespace CCG
                     SummonCreatureAction(ref state, a.Id);
                     break;
                 case ActionType.UseItem:
+                    UseItemAction(ref state, a.Id, a.TargetId);
                     break;
                 default:
                     break;
@@ -442,6 +443,18 @@ namespace CCG
             {
                 healedPlayer.Health += Math.Max(0, amount);
             }
+        }
+
+        private static void UseItemAction(ref GameState state, int itemId, int targetId)
+        {
+            var item = state.MyHand.Find(c => c.InstanceId == itemId);
+            state.MyPlayer.Mana -= item.Cost;
+            state.MyHand.Remove(item);
+            state.CardCount -= 1;
+
+            var creature = state.MyBoard.Find(c => c.InstanceId == targetId);
+            creature.AttackValue += item.AttackValue;
+            creature.DefenseValue += item.DefenseValue;
         }
 
         /// <summary>
