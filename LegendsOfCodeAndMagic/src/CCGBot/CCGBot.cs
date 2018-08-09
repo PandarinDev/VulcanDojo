@@ -33,7 +33,7 @@ namespace CCG
                 }
                 else
                 {
-                    Console.WriteLine(BattlePhase.HumanSolver.ProcessTurn(gs));
+                    Console.WriteLine(BattlePhase.GraphSolver.ProcessTurn(gs));
                 }
 
                 Console.Error.WriteLine($"Turn took {stopwatch.ElapsedMilliseconds} ms");
@@ -143,7 +143,6 @@ namespace CCG
                 ActionSequence bestSeq = new ActionSequence();
                 possibleStates.Enqueue(new Tuple<GameState, ActionSequence>(initialGameSate, bestSeq));
 
-                // TODO: Avoid infinite loop with NoAction
                 while (possibleStates.Count > 0)
                 {
                     var state = possibleStates.Dequeue();
