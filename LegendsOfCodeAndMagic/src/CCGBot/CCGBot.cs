@@ -15,18 +15,38 @@ namespace CCG
             const int lastTurn = draftTurnCount + 50;
             int[] curve = new int[] { 2, 8, 7, 5, 4, 2, 2 };
 
-            Stopwatch stopwatch = new Stopwatch();
+            Stopwatch sw = new Stopwatch();
             // game loop
             while (true)
             {
-                stopwatch.Restart();
+                sw.Restart();
                 GameState gs = Parse.GameStateFromConsole();
 
                 if (turn < lastTurn)
                 {
                     ++turn;
                 }
-                Console.Error.WriteLine($"Parsing took {stopwatch.ElapsedMilliseconds} ms");
+                //Console.Error.WriteLine($"Parsing took {sw.ElapsedTicks} ticks {sw.ElapsedMilliseconds} ms");
+
+                foreach (var card in gs.AllCards)
+                {
+                    switch (card.Location)
+                    {
+                    case BoardLocation.EnemySide:
+                        gs.EnemyBoard.Add(card);
+                        break;
+                    case BoardLocation.InHand:
+                        gs.MyHand.Add(card);
+                        break;
+                    case BoardLocation.PlayerSide:
+                        gs.MyBoard.Add(card);
+                        break;
+                    case BoardLocation.PlayerSidePassive:
+                        gs.PassiveCards.Add(card);
+                        break;
+                    }
+                }
+                //Console.Error.WriteLine($"Sorting cards took {sw.ElapsedTicks} ticks {sw.ElapsedMilliseconds} ms");
 
                 if (turn <= draftTurnCount)
                 {
@@ -37,7 +57,7 @@ namespace CCG
                     Console.WriteLine(BattlePhase.GraphSolver.ProcessTurn(gs));
                 }
 
-                Console.Error.WriteLine($"Turn took {stopwatch.ElapsedMilliseconds} ms");
+                Console.Error.WriteLine($"Turn took {sw.ElapsedTicks} ticks {sw.ElapsedMilliseconds} ms");
             }
         }
     }
@@ -146,13 +166,14 @@ namespace CCG
                 ActionSequence bestSeq = new ActionSequence();
                 possibleStates.Enqueue(new Tuple<GameState, ActionSequence>(initialGameSate, bestSeq));
 
-
+                int counter = 0;
                 while (possibleStates.Count > 0)
                 {
+                    counter++;
                     var state = possibleStates.Dequeue();
                     GameState gs = state.Item1;
                     ActionSequence toState = state.Item2;
-                    Console.Error.WriteLine($"GraphSolver checking action {toState}");
+                    //Console.Error.WriteLine($"GraphSolver checking action {toState}");
 
                     if (DidWinGame(gs))
                     {
@@ -161,7 +182,7 @@ namespace CCG
 
                     double value = EvaluateGameState(gs);
                     //Console.Error.WriteLine($"GraphSolver in state: {gs}");
-                    Console.Error.WriteLine($"GraphSolver action value: {value}");
+                    //Console.Error.WriteLine($"GraphSolver action value: {value}");
                     if (value > bestValue)
                     {
                         bestSeq = toState;
@@ -175,7 +196,8 @@ namespace CCG
                         possibleStates.Enqueue(new Tuple<GameState, ActionSequence>(actionGameState, toState.Extended(action)));
                     }
 
-                    Console.Error.WriteLine($"GraphSolver elapsed time: {sw.ElapsedMilliseconds} ms");
+                    if(counter % 20 == 0)
+                        Console.Error.WriteLine($"GraphSolver elapsed time:  {sw.ElapsedTicks} ticks {sw.ElapsedMilliseconds} ms");
                 }
 
                 return bestSeq;
@@ -605,6 +627,9 @@ namespace CCG
     {
         public static GameState GameStateFromConsole()
         {
+            Stopwatch sw = new Stopwatch();
+            sw.Restart();
+
             GameState gs = new GameState
             {
                 MyPlayer = Parse.Gambler(Console.ReadLine()),
@@ -613,25 +638,12 @@ namespace CCG
                 CardCount = int.Parse(Console.ReadLine())
             };
 
+            //Console.Error.WriteLine($"Parsed gamestate in {sw.ElapsedTicks} ticks {sw.ElapsedMilliseconds} ms");
+
             for (int i = 0; i < gs.CardCount; i++)
             {
                 Card card = Parse.Card(Console.ReadLine());
-
-                switch (card.Location)
-                {
-                    case BoardLocation.EnemySide:
-                        gs.EnemyBoard.Add(card);
-                        break;
-                    case BoardLocation.InHand:
-                        gs.MyHand.Add(card);
-                        break;
-                    case BoardLocation.PlayerSide:
-                        gs.MyBoard.Add(card);
-                        break;
-                    case BoardLocation.PlayerSidePassive:
-                        gs.PassiveCards.Add(card);
-                        break;
-                }
+                gs.AllCards.Add(card);
             }
             return gs;
         }
@@ -816,6 +828,7 @@ namespace CCG
         public Gambler EnemyPlayer;
         public int EnemyHandCount;
         public int CardCount; // Cards in my hand + on the board
+        public List<Card> AllCards = new List<Card>();
         public List<Card> MyHand = new List<Card>();
         public List<Card> MyBoard = new List<Card>();
         public List<Card> EnemyBoard = new List<Card>();
