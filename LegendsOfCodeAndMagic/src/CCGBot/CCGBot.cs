@@ -162,7 +162,7 @@ namespace CCG
             {
                 var possibleStates = new Queue<Tuple<GameState, ActionSequence>>();
 
-                double bestValue = 0.0;
+                double bestValue = -100000000.0;
                 ActionSequence bestSeq = new ActionSequence();
                 possibleStates.Enqueue(new Tuple<GameState, ActionSequence>(initialGameSate, bestSeq));
 
@@ -185,6 +185,7 @@ namespace CCG
                     //Console.Error.WriteLine($"GraphSolver action value: {value}");
                     if (value > bestValue)
                     {
+                        Console.Error.WriteLine($"Current Best seq is: {toState}");
                         bestSeq = toState;
                     }
 
@@ -196,8 +197,10 @@ namespace CCG
                         possibleStates.Enqueue(new Tuple<GameState, ActionSequence>(actionGameState, toState.Extended(action)));
                     }
 
-                    if(counter % 200 == 0)
+                    if (counter % 200 == 0)
+                    {
                         Console.Error.WriteLine($"GraphSolver elapsed time: {sw.ElapsedMilliseconds} ms");
+                    }
 
                     if (sw.ElapsedMilliseconds > 95)
                     {
