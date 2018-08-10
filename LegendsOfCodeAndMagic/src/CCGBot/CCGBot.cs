@@ -186,6 +186,7 @@ namespace CCG
                     if (value > bestValue)
                     {
                         bestSeq = toState;
+                        bestValue = value;
                     }
 
                     var actions = GetPossibleActions(gs);
@@ -207,6 +208,9 @@ namespace CCG
                         break;
                     }
                 }
+
+                Console.Error.WriteLine($"GraphSolver finished in {sw.ElapsedMilliseconds} ms with {counter} nodes");
+                Console.Error.WriteLine($"GraphSolver Chosen action is {bestSeq}");
 
                 return bestSeq;
             }
