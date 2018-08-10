@@ -196,8 +196,14 @@ namespace CCG
                         possibleStates.Enqueue(new Tuple<GameState, ActionSequence>(actionGameState, toState.Extended(action)));
                     }
 
-                    if(counter % 20 == 0)
-                        Console.Error.WriteLine($"GraphSolver elapsed time:  {sw.ElapsedTicks} ticks {sw.ElapsedMilliseconds} ms");
+                    if(counter % 200 == 0)
+                        Console.Error.WriteLine($"GraphSolver elapsed time: {sw.ElapsedMilliseconds} ms");
+
+                    if (sw.ElapsedMilliseconds > 95)
+                    {
+                        Console.Error.WriteLine($"GraphSolver took to much time, breaking out");
+                        break;
+                    }
                 }
 
                 return bestSeq;
@@ -627,9 +633,6 @@ namespace CCG
     {
         public static GameState GameStateFromConsole()
         {
-            Stopwatch sw = new Stopwatch();
-            sw.Restart();
-
             GameState gs = new GameState
             {
                 MyPlayer = Parse.Gambler(Console.ReadLine()),
@@ -637,9 +640,7 @@ namespace CCG
                 EnemyHandCount = int.Parse(Console.ReadLine()),
                 CardCount = int.Parse(Console.ReadLine())
             };
-
-            //Console.Error.WriteLine($"Parsed gamestate in {sw.ElapsedTicks} ticks {sw.ElapsedMilliseconds} ms");
-
+            
             for (int i = 0; i < gs.CardCount; i++)
             {
                 Card card = Parse.Card(Console.ReadLine());
@@ -725,7 +726,7 @@ namespace CCG
         public override string ToString()
         {
             string actions = string.Join(";", Actions.Select(a => a.ToString()));
-            return actions;
+            return string.IsNullOrEmpty(actions) ? "PASS" : actions;
         }
 
         public ActionSequence Extended(GameAction a)
