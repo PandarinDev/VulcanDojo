@@ -185,7 +185,6 @@ namespace CCG
                     //Console.Error.WriteLine($"GraphSolver action value: {value}");
                     if (value > bestValue)
                     {
-                        Console.Error.WriteLine($"Current Best seq is: {toState}");
                         bestSeq = toState;
                     }
 
