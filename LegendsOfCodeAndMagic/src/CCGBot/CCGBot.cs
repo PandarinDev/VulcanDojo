@@ -93,7 +93,7 @@ namespace CCG
             value += Math.Abs(card.AttackValue);
             value += Math.Abs(card.DefenseValue);
             value += card.CardDraw;
-            value += card.Abilities.Replace("-", "").Replace("C", "C2").Replace("W", "W2").Length * 0.5;
+            value += card.AbilitiesToString().Replace("-", "").Replace("C", "C2").Replace("W", "W2").Length * 0.5;
             value += (double)card.MyHealthChange / 3;
             value -= (double)card.EnemyHealthChange / 3;
             value -= card.Cost * 2;
@@ -197,10 +197,10 @@ namespace CCG
                         possibleStates.Enqueue(new Tuple<GameState, ActionSequence>(actionGameState, toState.Extended(action)));
                     }
 
-                    if (counter % 200 == 0)
-                    {
-                        Console.Error.WriteLine($"GraphSolver elapsed time: {sw.ElapsedMilliseconds} ms");
-                    }
+                    //if (counter % 200 == 0)
+                    //{
+                    //    Console.Error.WriteLine($"GraphSolver elapsed time: {sw.ElapsedMilliseconds} ms");
+                    //}
 
                     if (sw.ElapsedMilliseconds > 95)
                     {
@@ -354,7 +354,7 @@ namespace CCG
                     if (card.CardType == CardType.Creature)
                     {
                         boardCount += 1;
-                        if (card.Abilities.Contains("C"))
+                        if (card.HasCharge())
                         {
                             myBoard.Add(card);
                         }
@@ -404,7 +404,7 @@ namespace CCG
                 var enemyTreat = new List<Card>();
                 foreach (Card card in enemyBoard)
                 {
-                    if (card.Abilities.Contains("G"))
+                    if (card.HasGuard())
                     {
                         enemyTreat.Add(card);
                     }
@@ -415,11 +415,11 @@ namespace CCG
                     {
                         Card enemyCard = enemyTreat[0];
                         attacks += "ATTACK " + card.InstanceId + " " + enemyCard.InstanceId + ";";
-                        if (enemyCard.Abilities.Contains("W"))
+                        if (enemyCard.HasWard())
                         {
-                            enemyCard.Abilities = enemyCard.Abilities.Replace("W", "");
+                            enemyCard.RemoveWard();
                         }
-                        else if (card.Abilities.Contains("L"))
+                        else if (card.HasLethal())
                         {
                             enemyCard.DefenseValue = 0;
                         }
@@ -715,12 +715,26 @@ namespace CCG
                 Cost = int.Parse(inputs[4]),
                 AttackValue = int.Parse(inputs[5]),
                 DefenseValue = int.Parse(inputs[6]),
-                Abilities = inputs[7],
+                Abilities = Parse.Ability(inputs[7]),
                 MyHealthChange = int.Parse(inputs[8]),
                 EnemyHealthChange = int.Parse(inputs[9]),
                 CardDraw = int.Parse(inputs[10])
             };
             return card;
+        }
+
+        public static Card.Ability Ability(string abilities)
+        {
+            var nothing = CCG.Card.Ability.Nothing;
+            Card.Ability result = nothing;
+            result |= abilities.Contains("B") ? CCG.Card.Ability.Breakthrough : nothing;
+            result |= abilities.Contains("C") ? CCG.Card.Ability.Charge : nothing;
+            result |= abilities.Contains("D") ? CCG.Card.Ability.Drain : nothing;
+            result |= abilities.Contains("G") ? CCG.Card.Ability.Guard : nothing;
+            result |= abilities.Contains("L") ? CCG.Card.Ability.Lethal : nothing;
+            result |= abilities.Contains("W") ? CCG.Card.Ability.Ward : nothing;
+
+            return result;
         }
     }
 
@@ -918,6 +932,18 @@ namespace CCG
 
     public class Card
     {
+        public enum Ability
+        {
+            Nothing = 0x00,
+            Breakthrough = 0x01,
+            Charge = 0x02,
+            Drain = 0x04,
+            Guard = 0x08,
+            Lethal = 0x10,
+            Ward = 0x20,
+            All = 0x3F,
+        }
+
         public int CardNumber { get; set; }
         public int InstanceId { get; set; }
         public BoardLocation Location { get; set; }
@@ -925,35 +951,36 @@ namespace CCG
         public int Cost { get; set; }
         public int AttackValue { get; set; }
         public int DefenseValue { get; set; }
-        public string Abilities { get; set; }
+        public Ability Abilities { get; set; }
         public int MyHealthChange { get; set; }
         public int EnemyHealthChange { get; set; }
         public int CardDraw { get; set; }
 
         public bool DidAttack { get; set; } = false;
 
-        public bool HasBreakthrough() => Abilities.Contains("B");
-        public bool HasCharge() => Abilities.Contains("C");
-        public bool HasDrain() => Abilities.Contains("D");
-        public bool HasGuard() => Abilities.Contains("G");
-        public bool HasLethal() => Abilities.Contains("L");
-        public bool HasWard() => Abilities.Contains("W");
+        public bool HasBreakthrough() => HasAbility(Ability.Breakthrough);
+        public bool HasCharge() => HasAbility(Ability.Charge);
+        public bool HasDrain() => HasAbility(Ability.Drain);
+        public bool HasGuard() => HasAbility(Ability.Guard);
+        public bool HasLethal() => HasAbility(Ability.Lethal);
+        public bool HasWard() => HasAbility(Ability.Ward);
+        public bool HasAbility(Ability a) => (Abilities & a) != Ability.Nothing;
 
-        public void AddBreakthrough() => Abilities = 'B' + Abilities.Substring(1);
-        public void AddCharge() => Abilities = Abilities.Substring(0,1) + 'C' + Abilities.Substring(2);
-        public void AddDrain() => Abilities = Abilities.Substring(0,2) + 'D' + Abilities.Substring(3);
-        public void AddGuard() => Abilities = Abilities.Substring(0,3) + 'G' + Abilities.Substring(4);
-        public void AddLethal() => Abilities = Abilities.Substring(0,4) + 'L' + Abilities.Substring(5);
-        public void AddWard() => Abilities = Abilities.Substring(0,5) + 'W';
+        public void AddBreakthrough() => AddAbility(Ability.Breakthrough);
+        public void AddCharge() => AddAbility(Ability.Charge);
+        public void AddDrain() => AddAbility(Ability.Drain);
+        public void AddGuard() => AddAbility(Ability.Guard);
+        public void AddLethal() => AddAbility(Ability.Lethal);
+        public void AddWard() => AddAbility(Ability.Ward);
+        public void AddAbility(Ability a) => Abilities = (Abilities | a);
 
-
-        public void RemoveBreakthrough() => RemoveAbilty("B");
-        public void RemoveCharge() => RemoveAbilty("C");
-        public void RemoveDrain() => RemoveAbilty("D");
-        public void RemoveGuard() => RemoveAbilty("G");
-        public void RemoveLethal() => RemoveAbilty("L");
-        public void RemoveWard() => RemoveAbilty("W");
-        private void RemoveAbilty(string sign) => Abilities = Abilities.Replace(sign, "-");
+        public void RemoveBreakthrough() => RemoveAbilty(Ability.Breakthrough);
+        public void RemoveCharge() => RemoveAbilty(Ability.Charge);
+        public void RemoveDrain() => RemoveAbilty(Ability.Drain);
+        public void RemoveGuard() => RemoveAbilty(Ability.Guard);
+        public void RemoveLethal() => RemoveAbilty(Ability.Lethal);
+        public void RemoveWard() => RemoveAbilty(Ability.Ward);
+        public void RemoveAbilty(Ability a) => Abilities = (Abilities & ~a) & Ability.All;
 
         public Card Copy()
         {
@@ -962,7 +989,18 @@ namespace CCG
 
         public override string ToString()
         {
-            return $"{CardNumber} {InstanceId} {Location} {CardType} {Cost} {AttackValue} {DefenseValue} {Abilities} {MyHealthChange} {EnemyHealthChange} {CardDraw}";
+            return $"{CardNumber} {InstanceId} {Location} {CardType} {Cost} {AttackValue} {DefenseValue} {AbilitiesToString()} {MyHealthChange} {EnemyHealthChange} {CardDraw}";
+        }
+        
+        public string AbilitiesToString()
+        {
+            string abilities = HasBreakthrough() ? "B" : "-";
+            abilities += HasCharge() ? "C" : "-";
+            abilities += HasDrain() ? "D" : "-";
+            abilities += HasGuard() ? "G" : "-";
+            abilities += HasLethal() ? "L" : "-";
+            abilities += HasWard() ? "W" : "-";
+            return abilities;
         }
 
         public override bool Equals(object o)
