@@ -145,20 +145,14 @@ namespace CCG
                 double bestValue = -100000000.0;
                 ActionSequence bestSeq = new ActionSequence();
                 possibleStates.Enqueue(new Tuple<GameState, ActionSequence>(initialGameSate, bestSeq));
-
-                Stopwatch simulatorWatch = new Stopwatch();
-                Stopwatch restWatch = new Stopwatch();
-
+                
                 int counter = 0;
                 while (possibleStates.Count > 0)
                 {
-                    restWatch.Start();
-
                     counter++;
                     var state = possibleStates.Dequeue();
                     GameState gs = state.Item1;
                     ActionSequence toState = state.Item2;
-                    //Console.Error.WriteLine($"GraphSolver checking action {toState}");
 
                     if (gs.EnemyPlayer.Health <= 0)
                     {
@@ -168,8 +162,6 @@ namespace CCG
                     }
 
                     double value = EvaluateGameState(gs);
-                    //Console.Error.WriteLine($"GraphSolver in state: {gs}");
-                    //Console.Error.WriteLine($"GraphSolver action value: {value}");
                     if (value > bestValue)
                     {
                         bestSeq = toState;
@@ -177,19 +169,15 @@ namespace CCG
                     }
 
                     var actions = GetPossibleActions(gs);
-
-                    restWatch.Stop();
-                    simulatorWatch.Start();
+                    
 
                     var acount = actions.Count;
                     for (var i = 0; i < actions.Count; ++i)
                     {
                         var action = actions[i];
-                        //Console.Error.WriteLine($"Possible Action: {action}");
                         GameState actionGameState = Simulator.SimulateAction(gs, action);
                         possibleStates.Enqueue(new Tuple<GameState, ActionSequence>(actionGameState, toState.Extended(action)));
                     }
-                    simulatorWatch.Stop();
 
                     //if (counter % 200 == 0)
                     //{
@@ -205,10 +193,7 @@ namespace CCG
 
                 var elapsed = sw.ElapsedMilliseconds;
                 Console.Error.WriteLine($"GraphSolver finished in {elapsed} ms with {counter} nodes");
-                Console.Error.WriteLine($"GraphSolver simulate took {simulatorWatch.ElapsedMilliseconds} ms");
-                Console.Error.WriteLine($"GraphSolver rest took {restWatch.ElapsedMilliseconds} ms");
-                Console.Error.WriteLine($"GraphSolver Chosen action is {bestSeq}");
-                GC.Collect();
+                Console.Error.WriteLine($"GraphSolver Chosen action has value: {bestValue} , is {bestSeq}");
                 return bestSeq;
             }
 
@@ -1005,7 +990,12 @@ namespace CCG
 
         public static List<Card> Copy(this List<Card> val)
         {
-            return val.Select(c => c.Copy()).ToList();
+            var result = new List<Card>(val.Count);
+            for (int i = 0; i < val.Count; i++)
+            {
+                result.Add(val[i].Copy());
+            }
+            return result;
         }
     }
 
