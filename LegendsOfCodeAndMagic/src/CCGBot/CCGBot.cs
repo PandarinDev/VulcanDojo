@@ -479,6 +479,7 @@ namespace CCG
             {
                 healedPlayer.Health += Math.Max(0, amount);
             }
+            //healedPlayer.Health += ((int)(attacker.Abilities & Card.Ability.Drain) >> 2) * Math.Max(0, amount);
         }
 
         private static void UseItemAction(ref GameState state, int itemId, int targetId)
@@ -496,31 +497,7 @@ namespace CCG
                 var creature = state.MyBoard.Find(c => c.InstanceId == targetId);
                 creature.AttackValue += item.AttackValue;
                 creature.DefenseValue += item.DefenseValue;
-
-                if (item.HasBreakthrough())
-                {
-                    creature.AddBreakthrough();
-                }
-                if (item.HasCharge())
-                {
-                    creature.AddCharge();
-                }
-                if (item.HasDrain())
-                {
-                    creature.AddDrain();
-                }
-                if (item.HasGuard())
-                {
-                    creature.AddGuard();
-                }
-                if (item.HasLethal())
-                {
-                    creature.AddLethal();
-                }
-                if (item.HasWard())
-                {
-                    creature.AddWard();
-                }
+                creature.AddAbility(item.Abilities);
             }
             else if(item.CardType == CardType.RedItem || 
                 (item.CardType == CardType.BlueItem && targetId != GameAction.EnemyPlayerId))
@@ -528,31 +505,7 @@ namespace CCG
                 var creature = state.EnemyBoard.Find(c => c.InstanceId == targetId);
                 creature.AttackValue += item.AttackValue;
                 creature.DefenseValue += item.DefenseValue;
-
-                if (item.HasBreakthrough())
-                {
-                    creature.RemoveBreakthrough();
-                }
-                if (item.HasCharge())
-                {
-                    creature.RemoveCharge();
-                }
-                if (item.HasDrain())
-                {
-                    creature.RemoveDrain();
-                }
-                if (item.HasGuard())
-                {
-                    creature.RemoveGuard();
-                }
-                if (item.HasLethal())
-                {
-                    creature.RemoveLethal();
-                }
-                if (item.HasWard())
-                {
-                    creature.RemoveWard();
-                }
+                creature.RemoveAbilty(item.Abilities);
             }
         }
 
