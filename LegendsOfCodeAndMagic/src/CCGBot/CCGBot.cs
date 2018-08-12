@@ -3,11 +3,18 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Diagnostics;
 
+
 namespace CCG
 {
     class Player
     {
         static void Main(string[] args)
+        {
+            //MainReal(args);
+            MainTest(args);
+        }
+
+        static void MainReal(string[] args)
         {
             int turn = 0;
 
@@ -28,15 +35,37 @@ namespace CCG
                     ++turn;
                 }
 
-                //if (turn <= draftTurnCount)
+                if (turn <= draftTurnCount)
                 {
-                    //Console.WriteLine(DraftPhase.GetBestCard(gs.MyHand, curve));
+                    Console.WriteLine(DraftPhase.GetBestCard(gs.MyHand, curve));
                 }
-               // else
+                else
                 {
                     Console.WriteLine(BattlePhase.GraphSolver.ProcessTurn(gs));
                 }
 
+                Console.Error.WriteLine($"Turn took {sw.ElapsedTicks} ticks {sw.ElapsedMilliseconds} ms");
+            }
+        }
+
+        static void MainTest(string[] args)
+        {
+            int turn = 0;
+
+            const int draftTurnCount = 30;
+            const int lastTurn = draftTurnCount + 50;
+            int[] curve = new int[] { 2, 8, 7, 5, 4, 2, 2 };
+
+            Stopwatch sw = new Stopwatch();
+            // game loop
+            while (true)
+            {
+                sw.Restart();
+                GameState gs = Parse.GameStateFromConsole();
+                Console.Error.WriteLine($"{gs}");
+
+                Console.WriteLine(BattlePhase.GraphSolver.ProcessTurn(gs));
+                
                 Console.Error.WriteLine($"Turn took {sw.ElapsedTicks} ticks {sw.ElapsedMilliseconds} ms");
             }
         }
@@ -289,7 +318,7 @@ namespace CCG
                 while (true)
                 {
                     card = GetMostExpensiveCard(mana, boardCount, enemyBoardCount, myHand);
-                    if (card == null)
+                    if (card.InstanceId == -1)
                     {
                         break;
                     }
@@ -347,7 +376,8 @@ namespace CCG
 
             public static Card GetMostExpensiveCard(int mana, int myBoardCount, int enemyBoardCount, List<Card> myHand)
             {
-                Card cardToPlay = null;
+                Card cardToPlay = new Card();
+                cardToPlay.InstanceId = -1;
                 int maxCost = 0;
                 foreach (Card card in myHand)
                 {
@@ -439,22 +469,26 @@ namespace CCG
 
         private static void AttackAction(ref GameState state, int attackerId, int defenderId)
         {
-            var attacker = state.MyBoard.Find(c => c.InstanceId == attackerId);
+            var attIndex = state.MyBoard.FindIndex(c => c.InstanceId == attackerId);
+            var attacker = state.MyBoard[attIndex];
 
             if (defenderId != GameAction.EnemyPlayerId)
             {
-                var defender = state.EnemyBoard.Find(c => c.InstanceId == defenderId);
+                var defIndex = state.EnemyBoard.FindIndex(c => c.InstanceId == defenderId);
+                var defender = state.EnemyBoard[defIndex];
                 int attackerHpBefore = attacker.DefenseValue;
                 int defenderHpBefore = defender.DefenseValue;
                 AttackCreature(ref attacker, ref defender);
+                state.MyBoard[attIndex] = attacker;
+                state.EnemyBoard[defIndex] = defender;
                 if (attacker.DefenseValue <= 0)
                 {
-                    state.MyBoard.Remove(attacker);
+                    state.MyBoard.RemoveAt(attIndex);
                     state.CardCount -= 1;
                 }
                 if (defender.DefenseValue <= 0)
                 {
-                    state.EnemyBoard.Remove(defender);
+                    state.EnemyBoard.RemoveAt(defIndex);
                     state.CardCount -= 1;
                     if (attacker.HasBreakthrough())
                     {
@@ -469,6 +503,7 @@ namespace CCG
                 state.EnemyPlayer.Health -= attacker.AttackValue;
                 Drain(ref state.MyPlayer, attacker, attacker.AttackValue);
                 attacker.DidAttack = true;
+                state.MyBoard[attIndex] = attacker;
             }
         }
 
@@ -483,9 +518,10 @@ namespace CCG
 
         private static void UseItemAction(ref GameState state, int itemId, int targetId)
         {
-            var item = state.MyHand.Find(c => c.InstanceId == itemId);
+            var itemIndex = state.MyHand.FindIndex(c => c.InstanceId == itemId);
+            var item = state.MyHand[itemIndex];
             state.MyPlayer.Mana -= item.Cost;
-            state.MyHand.Remove(item);
+            state.MyHand.RemoveAt(itemIndex);
             state.CardCount -= 1;
 
             state.MyPlayer.Health += item.MyHealthChange;
@@ -493,18 +529,22 @@ namespace CCG
 
             if (item.CardType == CardType.GreenItem)
             {
-                var creature = state.MyBoard.Find(c => c.InstanceId == targetId);
+                var cIndex = state.MyBoard.FindIndex(c => c.InstanceId == targetId);
+                var creature = state.MyBoard[cIndex];
+                creature.AddAbility(item.Abilities);
                 creature.AttackValue += item.AttackValue;
                 creature.DefenseValue += item.DefenseValue;
-                creature.AddAbility(item.Abilities);
+                state.MyBoard[cIndex] = creature;
             }
             else if(item.CardType == CardType.RedItem || 
                 (item.CardType == CardType.BlueItem && targetId != GameAction.EnemyPlayerId))
             {
-                var creature = state.EnemyBoard.Find(c => c.InstanceId == targetId);
+                var cIndex = state.EnemyBoard.FindIndex(c => c.InstanceId == targetId);
+                var creature = state.EnemyBoard[cIndex];
+                creature.RemoveAbilty(item.Abilities);
                 creature.AttackValue += item.AttackValue;
                 creature.DefenseValue += item.DefenseValue;
-                creature.RemoveAbilty(item.Abilities);
+                state.EnemyBoard[cIndex] = creature;
             }
         }
 
@@ -543,19 +583,20 @@ namespace CCG
 
         private static void SummonCreatureAction(ref GameState state, int creatureId)
         {
-            var toSummon = state.MyHand.Find(c => c.InstanceId == creatureId);
-            state.MyPlayer.Mana -= toSummon.Cost;
-            state.MyHand.Remove(toSummon);
+            var toSummonIndex = state.MyHand.FindIndex(c => c.InstanceId == creatureId);
+            var toSummon = state.MyHand[toSummonIndex];
+            state.MyPlayer.Mana -= state.MyHand[toSummonIndex].Cost;
+            state.MyHand.RemoveAt(toSummonIndex);
 
             if (toSummon.HasCharge())
             {
-                state.MyBoard.Add(toSummon);
                 toSummon.Location = BoardLocation.PlayerSide;
+                state.MyBoard.Add(toSummon);
             }
             else
             {
-                state.PassiveCards.Add(toSummon);
                 toSummon.Location = BoardLocation.PlayerSidePassive;
+                state.PassiveCards.Add(toSummon);
             }
         }
     }
@@ -869,7 +910,7 @@ namespace CCG
         }
     }
 
-    public class Card
+    public struct Card
     {
         public enum Ability
         {
@@ -883,19 +924,19 @@ namespace CCG
             All = 0x3F,
         }
 
-        public int CardNumber { get; set; }
-        public int InstanceId { get; set; }
-        public BoardLocation Location { get; set; }
-        public CardType CardType { get; set; }
-        public int Cost { get; set; }
-        public int AttackValue { get; set; }
-        public int DefenseValue { get; set; }
-        public Ability Abilities { get; set; }
-        public int MyHealthChange { get; set; }
-        public int EnemyHealthChange { get; set; }
-        public int CardDraw { get; set; }
+        public int CardNumber;
+        public int InstanceId;
+        public BoardLocation Location;
+        public CardType CardType;
+        public int Cost;
+        public int AttackValue;
+        public int DefenseValue;
+        public Ability Abilities;
+        public int MyHealthChange;
+        public int EnemyHealthChange;
+        public int CardDraw;
 
-        public bool DidAttack { get; set; } = false;
+        public bool DidAttack;
 
         public bool HasBreakthrough() => HasAbility(Ability.Breakthrough);
         public bool HasCharge() => HasAbility(Ability.Charge);
@@ -920,12 +961,7 @@ namespace CCG
         public void RemoveLethal() => RemoveAbilty(Ability.Lethal);
         public void RemoveWard() => RemoveAbilty(Ability.Ward);
         public void RemoveAbilty(Ability a) => Abilities = (Abilities & ~a) & Ability.All;
-
-        public Card Copy()
-        {
-            return (Card)this.MemberwiseClone();
-        }
-
+        
         public override string ToString()
         {
             return $"{CardNumber} {InstanceId} {Location} {CardType} {Cost} {AttackValue} {DefenseValue} {AbilitiesToString()} {MyHealthChange} {EnemyHealthChange} {CardDraw}";
@@ -944,18 +980,17 @@ namespace CCG
 
         public override bool Equals(object o)
         {
-            var c = o as Card;
-            if (c != null)
-            {
-                bool result = CardNumber == c.CardNumber && InstanceId == c.InstanceId &&
-                Location == c.Location && CardType == c.CardType &&
-                Cost == c.Cost && AttackValue == c.AttackValue &&
-                DefenseValue == c.DefenseValue && Abilities == c.Abilities &&
-                MyHealthChange == c.MyHealthChange && EnemyHealthChange == c.EnemyHealthChange &&
-                CardDraw == c.CardDraw;
-                return result;
-            }
-            return false;
+            if (o == null) return false;
+            if (o.GetType() != this.GetType()) return false;
+
+            var c = (Card)o;
+            bool result = CardNumber == c.CardNumber && InstanceId == c.InstanceId &&
+            Location == c.Location && CardType == c.CardType &&
+            Cost == c.Cost && AttackValue == c.AttackValue &&
+            DefenseValue == c.DefenseValue && Abilities == c.Abilities &&
+            MyHealthChange == c.MyHealthChange && EnemyHealthChange == c.EnemyHealthChange &&
+            CardDraw == c.CardDraw;
+            return result;
         }
     }
 
@@ -990,12 +1025,13 @@ namespace CCG
 
         public static List<Card> Copy(this List<Card> val)
         {
-            var result = new List<Card>(val.Count);
-            for (int i = 0; i < val.Count; i++)
-            {
-                result.Add(val[i].Copy());
-            }
-            return result;
+            return new List<Card>(val);
+            //var result = new List<Card>();
+            //for (int i = 0; i < val.Count; i++)
+            //{
+            //    result.Add(val[i]);
+            //}
+            //return result;
         }
     }
 
