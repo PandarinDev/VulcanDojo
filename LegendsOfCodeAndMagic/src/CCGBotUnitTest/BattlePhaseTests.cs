@@ -256,5 +256,31 @@ namespace CCG.Tests
         #endregion
 
         // TODO: Combined tests with more creatures on board and cards in hand
+
+        [TestMethod]
+        public void RealSituationTest()
+        {
+            GameState gs = Parse.GameState(new Queue<string>
+            {
+                ("9 7 16 5"),("33 7 19 25"), "4", "15",
+                "75 10 0 0 5 6 5 B----- 0 0 0",
+                "50 14 0 0 3 3 2 ----L- 0 0 0",
+                "23 16 0 0 7 8 8 ------ 0 0 0",
+                "100 20 0 0 3 1 6 ---G-- 0 0 0",
+                "99 22 0 0 3 2 5 ---G-- 0 0 0",
+                "99 24 0 0 3 2 5 ---G-- 0 0 0",
+                "93 26 0 0 1 2 1 ---G-- 0 0 0",
+                "75 28 0 0 5 6 5 B----- 0 0 0",
+                "17 4 1 0 4 4 3 ------ 0 0 0",
+                "10 6 1 0 3 3 1 --D--- 0 0 0",
+                "69 8 1 0 3 4 4 B----- 0 0 0",
+                "69 3 -1 0 3 4 1 B----- 0 0 0",
+                "1 17 -1 0 1 2 1 ------ 0 0 0",
+                "76 1 -1 0 6 5 5 B-D--- 0 0 0",
+                "45 9 -1 0 6 6 5 B-D--- -3 0 0"
+            });
+
+            Console.WriteLine(BattlePhase.GraphSolver.ProcessTurn(gs));
+        }
     }
 }

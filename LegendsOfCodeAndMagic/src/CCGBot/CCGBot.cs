@@ -21,38 +21,18 @@ namespace CCG
             {
                 sw.Restart();
                 GameState gs = Parse.GameStateFromConsole();
+                Console.Error.WriteLine($"{gs}");
 
                 if (turn < lastTurn)
                 {
                     ++turn;
                 }
-                //Console.Error.WriteLine($"Parsing took {sw.ElapsedTicks} ticks {sw.ElapsedMilliseconds} ms");
 
-                foreach (var card in gs.AllCards)
+                //if (turn <= draftTurnCount)
                 {
-                    switch (card.Location)
-                    {
-                    case BoardLocation.EnemySide:
-                        gs.EnemyBoard.Add(card);
-                        break;
-                    case BoardLocation.InHand:
-                        gs.MyHand.Add(card);
-                        break;
-                    case BoardLocation.PlayerSide:
-                        gs.MyBoard.Add(card);
-                        break;
-                    case BoardLocation.PlayerSidePassive:
-                        gs.PassiveCards.Add(card);
-                        break;
-                    }
+                    //Console.WriteLine(DraftPhase.GetBestCard(gs.MyHand, curve));
                 }
-                //Console.Error.WriteLine($"Sorting cards took {sw.ElapsedTicks} ticks {sw.ElapsedMilliseconds} ms");
-
-                if (turn <= draftTurnCount)
-                {
-                    Console.WriteLine(DraftPhase.GetBestCard(gs.MyHand, curve));
-                }
-                else
+               // else
                 {
                     Console.WriteLine(BattlePhase.GraphSolver.ProcessTurn(gs));
                 }
@@ -175,9 +155,11 @@ namespace CCG
                     ActionSequence toState = state.Item2;
                     //Console.Error.WriteLine($"GraphSolver checking action {toState}");
 
-                    if (DidWinGame(gs))
+                    if (gs.EnemyPlayer.Health <= 0)
                     {
-                        return toState;
+                        Console.Error.WriteLine($"GraphSolver found winning sequence");
+                        bestSeq = toState;
+                        break;
                     }
 
                     double value = EvaluateGameState(gs);
@@ -193,7 +175,7 @@ namespace CCG
                     foreach (var action in actions)
                     {
                         //Console.Error.WriteLine($"Possible Action: {action}");
-                        GameState actionGameState = SimulateAction(gs, action);
+                        GameState actionGameState = Simulator.SimulateAction(gs, action);
                         possibleStates.Enqueue(new Tuple<GameState, ActionSequence>(actionGameState, toState.Extended(action)));
                     }
 
@@ -202,16 +184,17 @@ namespace CCG
                     //    Console.Error.WriteLine($"GraphSolver elapsed time: {sw.ElapsedMilliseconds} ms");
                     //}
 
-                    if (sw.ElapsedMilliseconds > 95)
+                    if (sw.ElapsedMilliseconds > 9500)
                     {
                         Console.Error.WriteLine($"GraphSolver took to much time, breaking out");
                         break;
                     }
                 }
 
-                Console.Error.WriteLine($"GraphSolver finished in {sw.ElapsedMilliseconds} ms with {counter} nodes");
+                var elapsed = sw.ElapsedMilliseconds;
+                Console.Error.WriteLine($"GraphSolver finished in {elapsed} ms with {counter} nodes");
                 Console.Error.WriteLine($"GraphSolver Chosen action is {bestSeq}");
-
+                GC.Collect();
                 return bestSeq;
             }
 
@@ -269,16 +252,6 @@ namespace CCG
                 result.AddRange(creaturesInHand.Select(c => GameActionFactory.SummonCreature(c.InstanceId)));
 
                 return result;
-            }
-
-            public static GameState SimulateAction(GameState gs, GameAction action)
-            {
-                return Simulator.SimulateAction(gs, action);
-            }
-
-            public static bool DidWinGame(GameState gs)
-            {
-                return gs.EnemyPlayer.Health <= 0;
             }
 
             public static double EvaluateGameState(GameState gs)
@@ -650,7 +623,21 @@ namespace CCG
             for (int i = 0; i < gs.CardCount; i++)
             {
                 Card card = Parse.Card(Console.ReadLine());
-                gs.AllCards.Add(card);
+                switch (card.Location)
+                {
+                    case BoardLocation.EnemySide:
+                        gs.EnemyBoard.Add(card);
+                        break;
+                    case BoardLocation.InHand:
+                        gs.MyHand.Add(card);
+                        break;
+                    case BoardLocation.PlayerSide:
+                        gs.MyBoard.Add(card);
+                        break;
+                    case BoardLocation.PlayerSidePassive:
+                        gs.PassiveCards.Add(card);
+                        break;
+                }
             }
             return gs;
         }
