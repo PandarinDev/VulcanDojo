@@ -146,9 +146,14 @@ namespace CCG
                 ActionSequence bestSeq = new ActionSequence();
                 possibleStates.Enqueue(new Tuple<GameState, ActionSequence>(initialGameSate, bestSeq));
 
+                Stopwatch simulatorWatch = new Stopwatch();
+                Stopwatch restWatch = new Stopwatch();
+
                 int counter = 0;
                 while (possibleStates.Count > 0)
                 {
+                    restWatch.Start();
+
                     counter++;
                     var state = possibleStates.Dequeue();
                     GameState gs = state.Item1;
@@ -172,12 +177,19 @@ namespace CCG
                     }
 
                     var actions = GetPossibleActions(gs);
-                    foreach (var action in actions)
+
+                    restWatch.Stop();
+                    simulatorWatch.Start();
+
+                    var acount = actions.Count;
+                    for (var i = 0; i < actions.Count; ++i)
                     {
+                        var action = actions[i];
                         //Console.Error.WriteLine($"Possible Action: {action}");
                         GameState actionGameState = Simulator.SimulateAction(gs, action);
                         possibleStates.Enqueue(new Tuple<GameState, ActionSequence>(actionGameState, toState.Extended(action)));
                     }
+                    simulatorWatch.Stop();
 
                     //if (counter % 200 == 0)
                     //{
@@ -193,6 +205,8 @@ namespace CCG
 
                 var elapsed = sw.ElapsedMilliseconds;
                 Console.Error.WriteLine($"GraphSolver finished in {elapsed} ms with {counter} nodes");
+                Console.Error.WriteLine($"GraphSolver simulate took {simulatorWatch.ElapsedMilliseconds} ms");
+                Console.Error.WriteLine($"GraphSolver rest took {restWatch.ElapsedMilliseconds} ms");
                 Console.Error.WriteLine($"GraphSolver Chosen action is {bestSeq}");
                 GC.Collect();
                 return bestSeq;
