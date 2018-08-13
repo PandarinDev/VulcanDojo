@@ -1,0 +1,10 @@
+CppMagic/CppMagic/Debug/
+CppMagic/.vs
+
+*.ilk
+*.pdb
+*.filters
+*.user
+*.db
+*.opendb
+*.ipch
