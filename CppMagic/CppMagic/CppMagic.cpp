@@ -13,6 +13,51 @@ using namespace std;
 
 
 
+namespace Utils
+{
+    template<typename Out>
+    static void split(const std::string &s, char delim, Out result) 
+    {
+        std::stringstream ss(s);
+        std::string item;
+        while (std::getline(ss, item, delim)) {
+            *(result++) = item;
+        }
+    }
+
+    static std::vector<std::string> split(const std::string &s, char delim) 
+    {
+        std::vector<std::string> elems;
+        split(s, delim, std::back_inserter(elems));
+        return elems;
+    }
+
+    string toString(const string& c)
+    {
+        return c;
+    }
+
+    auto join = [](auto collection, auto separator) -> auto
+    {
+        stringstream result;
+        for(size_t i=0; i < collection.size(); ++i)
+        {
+            result << toString(collection[i]);
+            if(i+1 != collection.size())
+                result << separator;
+        }
+        return result.str();
+    };
+    
+    template<class T>
+    string toString(vector<T> cards)
+    {
+        string r = Utils::join(cards, '\n');
+        return r;
+    }
+};
+
+
 enum BoardLocation
 {
     EnemySide = -1,
@@ -153,6 +198,11 @@ std::ostream& operator<<(std::ostream& os, const Card& c)
     return os << c.ToString();
 }
 
+string toString(const Card& c)
+{
+    return c.ToString();
+}
+
 enum ActionType
 {
     CreatureAttack,
@@ -182,19 +232,26 @@ struct GameAction
 
     string ToString() const
     {
+        stringstream ss;
         switch(Type)
         {
             case ActionType::CreatureAttack:
-                return "ATTACK {Id} {TargetId}";
+                ss << "ATTACK " << Id << " " << TargetId;
             case ActionType::SummonCreature:
-                return "SUMMON {Id}";
+                ss << "SUMMON " << Id;
             case ActionType::UseItem:
-                return "USE {Id} {TargetId}";
+                ss << "USE " << Id << " " << TargetId;
             default:
-                return "PASS";
+                ss << "PASS";
         }
+        return ss.str();
     }
 };
+
+string toString(GameAction* a)
+{
+    return a->ToString();
+}
 
 struct ActionSequence
 {
@@ -202,11 +259,7 @@ struct ActionSequence
 
     string ToString()
     {
-        string actions;
-        for(size_t i = 0; i < Actions.size(); i++)
-        {
-            actions.append(Actions[i]->ToString());
-        }
+        string actions = Utils::join(Actions, ';');
         return (actions == "") ? "PASS" : actions;
     }
     
@@ -272,18 +325,6 @@ struct Gambler
     }
 };
 
-template<class T>
-string toString(vector<T> cards)
-{
-    stringstream result;
-    for(size_t i=0; i < cards.size(); ++i)
-    {
-        result << cards[i];
-        if(i+1 != cards.size())
-            result << endl;
-    }
-    return result.str();
-}
 
 void printError(const char* msg)
 {
@@ -327,8 +368,8 @@ struct GameState
 
     string ToString() const
     {
-        vector<string> a{toString(MyHand), toString(MyBoard), toString(EnemyBoard), toString(PassiveCards)};
-        string cards = toString(a);
+        vector<string> a{Utils::toString(MyHand), Utils::toString(MyBoard), Utils::toString(EnemyBoard), Utils::toString(PassiveCards)};
+        string cards = Utils::toString(a);
         stringstream ss;
         ss << MyPlayer.ToString() << endl << EnemyPlayer.ToString() << endl << EnemyHandCount << endl << CardCount << endl << cards;
         return ss.str();
@@ -620,6 +661,7 @@ namespace BattlePhase
             {
                 counter++;
                 auto state = possibleStates.front();
+                possibleStates.pop();
                 GameState gs = state->first;
                 ActionSequence toState = state->second;
 
@@ -633,6 +675,7 @@ namespace BattlePhase
                 double value = EvaluateGameState(gs);
                 if(value > bestValue)
                 {
+                    cerr << "GraphSolver NEW best value found: " << value << endl;
                     bestSeq = toState;
                     bestValue = value;
                 }
@@ -765,25 +808,10 @@ namespace BattlePhase
 
 struct Parse
 {
-    template<typename Out>
-    static void split(const std::string &s, char delim, Out result) {
-        std::stringstream ss(s);
-        std::string item;
-        while (std::getline(ss, item, delim)) {
-            *(result++) = item;
-        }
-    }
-
-    static std::vector<std::string> split(const std::string &s, char delim) {
-        std::vector<std::string> elems;
-        split(s, delim, std::back_inserter(elems));
-        return elems;
-    }
-
     static Gambler Gambler(string input)
     {
         //Console.Error.WriteLine("!parse Gambler: " + input);
-        std::vector<std::string> inputs = split(input, ' ');
+        std::vector<std::string> inputs = Utils::split(input, ' ');
         ::Gambler gambler;
         gambler.Health = stoi(inputs[0]),
         gambler.Mana = stoi(inputs[1]),
@@ -808,7 +836,7 @@ struct Parse
     static ::Card Card(string input)
     {
         //Console.Error.WriteLine("!parse Card: " + input);
-        std::vector<std::string> inputs = split(input, ' ');
+        std::vector<std::string> inputs = Utils::split(input, ' ');
         ::Card card;
         card.CardNumber = stoi(inputs[0]);
         card.InstanceId = stoi(inputs[1]);
