@@ -215,7 +215,7 @@ struct GameAction
     static const int EnemyPlayerId = -1;
 
     ActionType Type;
-    int Id;
+    int Id = 0;
     int TargetId = EnemyPlayerId;
 
     GameAction(ActionType type) : Type(type) {}
@@ -237,25 +237,33 @@ struct GameAction
         {
             case ActionType::CreatureAttack:
                 ss << "ATTACK " << Id << " " << TargetId;
+                break;
             case ActionType::SummonCreature:
                 ss << "SUMMON " << Id;
+                break;
             case ActionType::UseItem:
                 ss << "USE " << Id << " " << TargetId;
+                break;
             default:
                 ss << "PASS";
         }
         return ss.str();
     }
+
+    bool operator==(const GameAction& a) const
+    {
+        return (Type == a.Type && Id == a.Id && TargetId == a.TargetId);
+    }
 };
 
-string toString(GameAction* a)
+string toString(const shared_ptr<GameAction>& a)
 {
     return a->ToString();
 }
 
 struct ActionSequence
 {
-    vector<GameAction*> Actions;
+    vector<shared_ptr<GameAction>> Actions;
 
     string ToString()
     {
@@ -267,16 +275,16 @@ struct ActionSequence
     ActionSequence(const ActionSequence&) = default;
     ActionSequence& operator=(const ActionSequence&) = default;
 
-    ActionSequence Extended(GameAction& a)
+    ActionSequence Extended(const shared_ptr<GameAction>& a) const
     {
         ActionSequence copy(*this);
         copy.Add(a);
         return copy;
     }
 
-    void Add(GameAction& a)
+    void Add(const shared_ptr<GameAction>& a)
     {
-        Actions.emplace_back(&a);
+        Actions.emplace_back(a);
     }
 };
 
@@ -324,7 +332,6 @@ struct Gambler
         return result;
     }
 };
-
 
 void printError(const char* msg)
 {
@@ -637,21 +644,50 @@ namespace DraftPhase
 
 namespace BattlePhase
 {
+    class ActionPool
+    {
+        vector<shared_ptr<GameAction>> pool;
+    public:
+        bool HasAction(const GameAction& action)
+        {
+            return std::any_of(pool.begin(), pool.end(), [&](auto& a)
+            {
+                return *a == action;
+            });
+        }
+
+        void Register(const GameAction& a)
+        {
+            pool.emplace_back(make_shared<GameAction>(a));
+        }
+
+        shared_ptr<GameAction>& GetAction(const GameAction& action)
+        {
+            for(auto& a : pool)
+            {
+                if(*a == action)
+                    return a;
+            }
+            throw std::exception("GetAction was called with bad action!");
+        }
+    };
+
     struct GraphSolver
     {
-        static string ProcessTurn(GameState gs)
+        static string ProcessTurn(const GameState& gs)
         {
-            ActionSequence seq = DecideOnBestActionSequence(gs);
+            ActionPool pool;
+            ActionSequence seq = DecideOnBestActionSequence(gs, pool);
             return seq.ToString();
         }
 
-        static ActionSequence DecideOnBestActionSequence(GameState initialGameSate)
+        static ActionSequence DecideOnBestActionSequence(const GameState& initialGameSate, 
+            ActionPool& actionPool)
         {
-            auto possibleStates = std::queue<shared_ptr<pair<GameState, ActionSequence>>>();
-
             double bestValue = -100000000.0;
             ActionSequence bestSeq;
-            possibleStates.emplace(make_shared<pair<GameState, ActionSequence>>(initialGameSate, bestSeq));
+            auto possibleStates = std::queue<shared_ptr<pair<GameState, ActionSequence>>>();
+            possibleStates.push(make_shared<pair<GameState, ActionSequence>>(initialGameSate, bestSeq));
             
             Stopwatch sw;
             sw.Restart();
@@ -662,8 +698,8 @@ namespace BattlePhase
                 counter++;
                 auto state = possibleStates.front();
                 possibleStates.pop();
-                GameState gs = state->first;
-                ActionSequence toState = state->second;
+                const GameState& gs = state->first;
+                const ActionSequence& toState = state->second;
 
                 if(gs.EnemyPlayer.Health <= 0)
                 {
@@ -682,15 +718,20 @@ namespace BattlePhase
 
                 auto actions = GetPossibleActions(gs);
 
-                for(auto& action : actions)
+                for(auto& a : actions)
                 {
-                    GameState actionGameState = Simulator::SimulateAction(gs, action);
-                    possibleStates.emplace(make_shared<pair<GameState, ActionSequence>>(actionGameState, toState.Extended(action)));
+                    if(!actionPool.HasAction(a))
+                    {
+                        actionPool.Register(a);
+                    }
+                    auto& action = actionPool.GetAction(a);
+                    GameState actionGameState = Simulator::SimulateAction(gs, *action);
+                    possibleStates.push(make_shared<pair<GameState, ActionSequence>>(actionGameState, toState.Extended(action)));
                 }
 
                 //if (counter % 200 == 0)
                 //{
-                //    Console.Error.WriteLine($"GraphSolver elapsed time: {sw.ElapsedMilliseconds} ms");
+                //    cerr << "GraphSolver elapsed time: " << sw.ElapsedMilliseconds << " ms";
                 //}
 
                 /*if(sw.ElapsedMilliseconds() > 9500)
@@ -719,7 +760,7 @@ namespace BattlePhase
             * */
             vector<GameAction> result;
 
-            bool enemyHasGuard = std::any_of(gs.EnemyBoard.begin(), gs.EnemyBoard.end(), [](Card c){return c.HasGuard();});
+            bool enemyHasGuard = std::any_of(gs.EnemyBoard.begin(), gs.EnemyBoard.end(), [](auto& c){return c.HasGuard();});
             if(!enemyHasGuard)
             {
                 for(auto& c : gs.MyBoard)
@@ -790,7 +831,7 @@ namespace BattlePhase
             return result;
         }
 
-        static double EvaluateGameState(GameState gs)
+        static double EvaluateGameState(const GameState& gs)
         {
             // TODO: Better evaluation function
             // An evaluation function is the hardest and most important part of an AI
@@ -799,8 +840,9 @@ namespace BattlePhase
             result -= gs.EnemyPlayer.Health;
             result += gs.MyBoard.size();
             result += gs.PassiveCards.size();
-            result += std::accumulate(gs.MyBoard.begin(), gs.MyBoard.end(), 0.0, [](double s, Card c) {return s + (double)c.AttackValue + (double)c.DefenseValue;});
-            result -= std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoard.end(), 0.0, [](double s, Card c) {return s + (double)c.AttackValue + (double)c.DefenseValue;});
+            auto valueGatherer = [](double s, auto c) {return s + (double)c.AttackValue + (double)c.DefenseValue;};
+            result += std::accumulate(gs.MyBoard.begin(), gs.MyBoard.end(), 0.0, valueGatherer);
+            result -= std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoard.end(), 0.0, valueGatherer);
             return result;
         }
     };
