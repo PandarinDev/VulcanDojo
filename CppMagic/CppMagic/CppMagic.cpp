@@ -759,11 +759,10 @@ namespace BattlePhase
     };
 }
 
-namespace Parse
+struct Parse
 {
-
     template<typename Out>
-    void split(const std::string &s, char delim, Out result) {
+    static void split(const std::string &s, char delim, Out result) {
         std::stringstream ss(s);
         std::string item;
         while (std::getline(ss, item, delim)) {
@@ -771,13 +770,13 @@ namespace Parse
         }
     }
 
-    std::vector<std::string> split(const std::string &s, char delim) {
+    static std::vector<std::string> split(const std::string &s, char delim) {
         std::vector<std::string> elems;
         split(s, delim, std::back_inserter(elems));
         return elems;
     }
 
-    ::Gambler Gambler(string input)
+    static Gambler Gambler(string input)
     {
         //Console.Error.WriteLine("!parse Gambler: " + input);
         std::vector<std::string> inputs = split(input, ' ');
@@ -789,7 +788,7 @@ namespace Parse
         return gambler;
     }
 
-    ::CardAbility Ability(string abilities)
+    static CardAbility Ability(string abilities)
     {
         auto nothing = CardAbility::Nothing;
         CardAbility result = nothing;
@@ -802,7 +801,7 @@ namespace Parse
         return result;
     }
 
-    ::Card Card(string input)
+    static ::Card Card(string input)
     {
         //Console.Error.WriteLine("!parse Card: " + input);
         std::vector<std::string> inputs = split(input, ' ');
@@ -821,7 +820,7 @@ namespace Parse
         return card;
     }
 
-    ::GameState GameStateFromConsole()
+    static ::GameState GameStateFromConsole()
     {
         ::GameState gs;
         string line;
@@ -855,7 +854,7 @@ namespace Parse
         return gs;
     }
 
-    ::GameState GameState(queue<string> lines)
+    static ::GameState GameState(queue<string> lines)
     {
         ::GameState gs;
         gs.MyPlayer = Parse::Gambler(lines.front()); lines.pop();
@@ -885,7 +884,7 @@ namespace Parse
         }
         return gs;
     }
-}
+};
 
 /**
 * Auto-generated code below aims at helping you parse
