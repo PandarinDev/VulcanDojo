@@ -1,5 +1,6 @@
 CppMagic/CppMagic/Debug/
 CppMagic/.vs
+CppMagic/Debug/
 
 *.ilk
 *.pdb
@@ -8,3 +9,4 @@ CppMagic/.vs
 *.db
 *.opendb
 *.ipch
+CppMagic/Debug/CppMagic.exe
