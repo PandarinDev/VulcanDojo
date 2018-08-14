@@ -56,6 +56,11 @@ struct Card
     int CardDraw;
 
     bool DidAttack;
+    
+    Card() = default;
+    Card(const Card&) = default;
+    Card(Card&&) = default;
+    Card& operator=(const Card&) = default;
 
     bool HasBreakthrough() const { return HasAbility(CardAbility::Breakthrough); }
     bool HasCharge() const { return HasAbility(CardAbility::Charge); }
@@ -147,92 +152,6 @@ std::ostream& operator<<(std::ostream& os, const Card& c)
 {
     return os << c.ToString();
 }
-
-
-struct DraftPhase
-{
-    /// <summary>
-    /// Represent a turn in the draft phase, 
-    /// basically selects the card that we should pick
-    /// </summary>
-    static string GetBestCard(vector<Card> picks, int curve[])
-    {
-        const int possiblePickCount = 3;
-        double maxValue = -10000;
-        int bestPickIndex = 0;
-        for(int i = 0; i < possiblePickCount; i++)
-        {
-            double cardValue = GetValue(picks[i], curve);
-            if(cardValue >= maxValue)
-            {
-                maxValue = cardValue;
-                bestPickIndex = i;
-            }
-        }
-        CurveAdd(picks[bestPickIndex].Cost, curve);
-        return "PICK " + bestPickIndex;
-    }
-
-    static double GetValue(Card card, int curve[])
-    {
-        //TODO: improve red and blue item values
-        double value = 0;
-        value += abs(card.AttackValue);
-        value += abs(card.DefenseValue);
-        value += card.CardDraw;
-        auto s = card.AbilitiesToString();
-        value +=  count_if(s.begin(), s.end(), [](auto s){return s != '-';});
-        value += (double)card.MyHealthChange / 3;
-        value -= (double)card.EnemyHealthChange / 3;
-        value -= card.Cost * 2;
-        //marginal penalty
-        if(card.Cost == 0 || card.AttackValue == 0)
-        {
-            value -= 2;
-        }
-        //nonboard penalty
-        if(card.CardType == CardType::RedItem ||
-            card.CardType == CardType::BlueItem)
-        {
-            value -= 1;
-        }
-        //balance penalty, nerf card "Decimate"
-        if(card.CardNumber == 151)
-        {
-            value -= 94;
-        }
-        if(HaveEnoughInManaCurve(card.Cost, curve))
-        {
-            value -= 1;
-        }
-
-        return value;
-    }
-
-    static bool HaveEnoughInManaCurve(int cost, int curve[])
-    {
-        if(cost > 1 && cost < 7 && curve[cost - 1] <= 0)
-        {
-            return true;
-        }
-        if(cost <= 1 && curve[0] <= 0)
-        {
-            return true;
-        }
-        if(cost > 6 && curve[6] <= 0)
-        {
-            return true;
-        }
-        return false;
-    }
-
-    static void CurveAdd(int cost, int curve[])
-    {
-        int place = clamp(cost - 1, 0, 6);
-        curve[place] -= 1;
-    }
-};
-
 
 enum ActionType
 {
@@ -335,9 +254,10 @@ struct Gambler
     
     Gambler() = default;
     Gambler(const Gambler&) = default;
+    Gambler(Gambler&&) = default;
     Gambler& operator=(const Gambler&) = default;
 
-    string ToString()
+    string ToString() const
     {
         ostringstream ss;
         ss << Health << " " << Mana << " "<< DeckSize <<" "<< NextRuneThreshold;
@@ -356,7 +276,7 @@ template<class T>
 string toString(vector<T> cards)
 {
     stringstream result;
-    for(int i=0; i < cards.size(); ++i)
+    for(size_t i=0; i < cards.size(); ++i)
     {
         result << cards[i];
         if(i+1 != cards.size())
@@ -402,9 +322,10 @@ struct GameState
     
     GameState() = default;
     GameState(const GameState&) = default;
+    GameState(GameState&&) = default;
     GameState& operator=(const GameState&) = default;
 
-    string ToString()
+    string ToString() const
     {
         vector<string> a{toString(MyHand), toString(MyBoard), toString(EnemyBoard), toString(PassiveCards)};
         string cards = toString(a);
@@ -413,7 +334,7 @@ struct GameState
         return ss.str();
     }
 
-    bool operator==(GameState c)
+    bool operator==(const GameState& c)
     {
         bool result = 
             MyPlayer == c.MyPlayer &&
@@ -450,7 +371,7 @@ public:
 
 namespace Simulator
 {
-    void Drain(Gambler& healedPlayer, Card attacker, int amount)
+    void Drain(Gambler& healedPlayer, const Card& attacker, int amount)
     {
         if(attacker.HasDrain())
         {
@@ -590,6 +511,89 @@ namespace Simulator
     }
 };
 
+namespace DraftPhase
+{
+    bool HaveEnoughInManaCurve(int cost, int curve[])
+    {
+        if(cost > 1 && cost < 7 && curve[cost - 1] <= 0)
+        {
+            return true;
+        }
+        if(cost <= 1 && curve[0] <= 0)
+        {
+            return true;
+        }
+        if(cost > 6 && curve[6] <= 0)
+        {
+            return true;
+        }
+        return false;
+    }
+
+    double GetValue(Card card, int curve[])
+    {
+        //TODO: improve red and blue item values
+        double value = 0;
+        value += abs(card.AttackValue);
+        value += abs(card.DefenseValue);
+        value += card.CardDraw;
+        auto s = card.AbilitiesToString();
+        value +=  count_if(s.begin(), s.end(), [](auto s){return s != '-';});
+        value += (double)card.MyHealthChange / 3;
+        value -= (double)card.EnemyHealthChange / 3;
+        value -= card.Cost * 2;
+        //marginal penalty
+        if(card.Cost == 0 || card.AttackValue == 0)
+        {
+            value -= 2;
+        }
+        //nonboard penalty
+        if(card.CardType == CardType::RedItem ||
+            card.CardType == CardType::BlueItem)
+        {
+            value -= 1;
+        }
+        //balance penalty, nerf card "Decimate"
+        if(card.CardNumber == 151)
+        {
+            value -= 94;
+        }
+        if(HaveEnoughInManaCurve(card.Cost, curve))
+        {
+            value -= 1;
+        }
+
+        return value;
+    }
+
+    void CurveAdd(int cost, int curve[])
+    {
+        int place = clamp(cost - 1, 0, 6);
+        curve[place] -= 1;
+    }
+    /// <summary>
+    /// Represent a turn in the draft phase, 
+    /// basically selects the card that we should pick
+    /// </summary>
+    string GetBestCard(vector<Card> picks, int curve[])
+    {
+        const int possiblePickCount = 3;
+        double maxValue = -10000;
+        int bestPickIndex = 0;
+        for(int i = 0; i < possiblePickCount; i++)
+        {
+            double cardValue = GetValue(picks[i], curve);
+            if(cardValue >= maxValue)
+            {
+                maxValue = cardValue;
+                bestPickIndex = i;
+            }
+        }
+        CurveAdd(picks[bestPickIndex].Cost, curve);
+        return "PICK " + bestPickIndex;
+    }
+};
+
 namespace BattlePhase
 {
     struct GraphSolver
@@ -659,7 +663,7 @@ namespace BattlePhase
             return bestSeq;
         }
 
-        static vector<GameAction> GetPossibleActions(GameState gs)
+        static vector<GameAction> GetPossibleActions(const GameState& gs)
         {
             /* Possible actions are:
             * - attacking with creature to
