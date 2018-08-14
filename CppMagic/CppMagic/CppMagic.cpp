@@ -693,11 +693,11 @@ namespace BattlePhase
                 //    Console.Error.WriteLine($"GraphSolver elapsed time: {sw.ElapsedMilliseconds} ms");
                 //}
 
-                if(sw.ElapsedMilliseconds() > 9500)
+                /*if(sw.ElapsedMilliseconds() > 9500)
                 {
                     printError("GraphSolver took to much time, breaking out");
                     break;
-                }
+                }*/
             }
 
             auto elapsed = sw.ElapsedMilliseconds();
@@ -808,7 +808,7 @@ namespace BattlePhase
 
 struct Parse
 {
-    static Gambler Gambler(string input)
+    static Gambler Gambler(const string& input)
     {
         //Console.Error.WriteLine("!parse Gambler: " + input);
         std::vector<std::string> inputs = Utils::split(input, ' ');
@@ -820,20 +820,23 @@ struct Parse
         return gambler;
     }
 
-    static CardAbility Ability(string abilities)
+    static CardAbility Ability(const string& abilities)
     {
         auto nothing = CardAbility::Nothing;
-        CardAbility result = nothing;
-        result = result | (abilities.find('B') >= 0) ? CardAbility::Breakthrough : nothing;
-        result = result | (abilities.find('C') >= 0) ? CardAbility::Charge : nothing;
-        result = result | (abilities.find('D') >= 0) ? CardAbility::Drain : nothing;
-        result = result | (abilities.find('G') >= 0) ? CardAbility::Guard : nothing;
-        result = result | (abilities.find('L') >= 0) ? CardAbility::Lethal : nothing;
-        result = result | (abilities.find('W') >= 0) ? CardAbility::Ward : nothing;
-        return result;
+        int result = nothing;
+        auto hasChar = [&](char c) -> bool {
+            return abilities.find(c) != string::npos;
+        };
+        result |= (hasChar('B') ? Breakthrough : nothing);
+        result |= (hasChar('C') ? Charge : nothing);
+        result |= (hasChar('D') ? Drain : nothing);
+        result |= (hasChar('G') ? Guard : nothing);
+        result |= (hasChar('L') ? Lethal : nothing);
+        result |= (hasChar('W') ? Ward : nothing);
+        return (CardAbility)result;
     }
 
-    static ::Card Card(string input)
+    static ::Card Card(const string& input)
     {
         //Console.Error.WriteLine("!parse Card: " + input);
         std::vector<std::string> inputs = Utils::split(input, ' ');
