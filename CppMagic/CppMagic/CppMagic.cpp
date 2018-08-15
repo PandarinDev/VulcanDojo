@@ -674,15 +674,15 @@ namespace BattlePhase
 
     struct GraphSolver
     {
-        static string ProcessTurn(const GameState& gs)
+        static string ProcessTurn(const GameState& gs, long timeout)
         {
             ActionPool pool;
-            ActionSequence seq = DecideOnBestActionSequence(gs, pool);
+            ActionSequence seq = DecideOnBestActionSequence(gs, pool, timeout);
             return seq.ToString();
         }
 
         static ActionSequence DecideOnBestActionSequence(const GameState& initialGameSate, 
-            ActionPool& actionPool)
+            ActionPool& actionPool, long timeout)
         {
             double bestValue = -100000000.0;
             ActionSequence bestSeq;
@@ -734,11 +734,11 @@ namespace BattlePhase
                 //    cerr << "GraphSolver elapsed time: " << sw.ElapsedMilliseconds << " ms";
                 //}
 
-                /*if(sw.ElapsedMilliseconds() > 9500)
+                if(sw.ElapsedMilliseconds() > 9500)
                 {
                     printError("GraphSolver took to much time, breaking out");
                     break;
-                }*/
+                }
             }
 
             auto elapsed = sw.ElapsedMilliseconds();
@@ -1031,12 +1031,10 @@ int mainReal()
         }
         else
         {
-            cout << BattlePhase::GraphSolver::ProcessTurn(gs) << endl;
+            cout << BattlePhase::GraphSolver::ProcessTurn(gs, 95) << endl;
         }
     }
 }
-
-#if CCGDeveloper
 
 int mainTest()
 {
@@ -1072,14 +1070,12 @@ int mainTest()
         
         printError(gs.ToString());
 
-        cout << BattlePhase::GraphSolver::ProcessTurn(gs) << endl;
+        cout << BattlePhase::GraphSolver::ProcessTurn(gs, 9500) << endl;
 
         cerr << "Turn took " << sw.ElapsedMilliseconds() << " ms" << endl;
     }
     return 0;
 }
-#endif
-
 
 int main()
 {

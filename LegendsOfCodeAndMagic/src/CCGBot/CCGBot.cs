@@ -44,7 +44,7 @@ namespace CCG
                 }
                 else
                 {
-                    Console.WriteLine(BattlePhase.GraphSolver.ProcessTurn(gs));
+                    Console.WriteLine(BattlePhase.GraphSolver.ProcessTurn(gs, 95));
                 }
 
                 Console.Error.WriteLine($"Turn took {sw.ElapsedTicks} ticks {sw.ElapsedMilliseconds} ms");
@@ -87,7 +87,7 @@ namespace CCG
                 });
                 Console.Error.WriteLine($"{gs}");
 
-                Console.WriteLine(BattlePhase.GraphSolver.ProcessTurn(gs));
+                Console.WriteLine(BattlePhase.GraphSolver.ProcessTurn(gs, 9500));
                 
                 Console.Error.WriteLine($"Turn took {sw.ElapsedTicks} ticks {sw.ElapsedMilliseconds} ms");
             }
@@ -184,14 +184,14 @@ namespace CCG
         {
             static Stopwatch sw = new Stopwatch();
 
-            public static string ProcessTurn(GameState gs)
+            public static string ProcessTurn(GameState gs, long timeout)
             {
                 sw.Restart();
-                ActionSequence seq = DecideOnBestActionSequence(gs);
+                ActionSequence seq = DecideOnBestActionSequence(gs, timeout);
                 return seq.ToString();
             }
 
-            public static ActionSequence DecideOnBestActionSequence(GameState initialGameSate)
+            public static ActionSequence DecideOnBestActionSequence(GameState initialGameSate, long timeout)
             {
                 var possibleStates = new Queue<Tuple<GameState, ActionSequence>>();
 
@@ -237,7 +237,7 @@ namespace CCG
                     //    Console.Error.WriteLine($"GraphSolver elapsed time: {sw.ElapsedMilliseconds} ms");
                     //}
 
-                    if (sw.ElapsedMilliseconds > 9500)
+                    if (sw.ElapsedMilliseconds > timeout)
                     {
                         Console.Error.WriteLine($"GraphSolver took to much time, breaking out");
                         break;
