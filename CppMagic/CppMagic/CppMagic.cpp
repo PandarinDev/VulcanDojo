@@ -395,9 +395,8 @@ struct GameState
 {
     Gambler MyPlayer;
     Gambler EnemyPlayer;
-    int EnemyHandCount;
-    int CardCount; // Cards in my hand + on the board
-    vector<Card> AllCards;
+    char EnemyHandCount;
+    char CardCount; // Cards in my hand + on the board
     
     array<Card, 8> MyHand;
     array<Card, 6> MyBoard;
@@ -408,11 +407,6 @@ struct GameState
     char MyBoardCount = 0;
     char EnemyBoardCount = 0;
     char PassiveCardsCount = 0;
-
-    /*vector<Card> MyHand;
-    vector<Card> MyBoard;
-    vector<Card> EnemyBoard;
-    vector<Card> PassiveCards;*/
     
     GameState() = default;
     GameState(const GameState&) = default;
@@ -429,7 +423,7 @@ struct GameState
         };
         string cards = Utils::toString(a);
         stringstream ss;
-        ss << MyPlayer.ToString() << endl << EnemyPlayer.ToString() << endl << EnemyHandCount << endl << CardCount << endl << cards;
+        ss << MyPlayer.ToString() << endl << EnemyPlayer.ToString() << endl << (int)EnemyHandCount << endl << (int)CardCount << endl << cards;
         return ss.str();
     }
 
@@ -638,7 +632,7 @@ namespace Simulator
             default:
                 break;
         }
-        return state;
+        return move(state);
     }
 };
 
