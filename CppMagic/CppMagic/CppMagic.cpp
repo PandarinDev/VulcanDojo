@@ -100,7 +100,7 @@ struct Card
     int EnemyHealthChange;
     int CardDraw;
 
-    bool DidAttack;
+    bool DidAttack = false;
     
     Card() = default;
     Card(const Card&) = default;
@@ -225,7 +225,7 @@ struct GameAction
         Id = iid;
     }
 
-    GameAction(ActionType type, int iid, int targetId) : GameAction(type)
+    GameAction(ActionType type, int iid, int targetId) : GameAction(type, iid)
     {
         TargetId = targetId;
     }
