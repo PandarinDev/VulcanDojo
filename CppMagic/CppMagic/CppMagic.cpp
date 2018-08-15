@@ -902,16 +902,18 @@ struct Parse
     {
         CCG::GameState gs;
         string line;
-        cin >> line; cin.ignore();
+        std::getline(std::cin, line);
+        printError("Gambler1: "+line);
         gs.MyPlayer = Parse::Gambler(line);
-        cin >> line; cin.ignore();
+        std::getline(std::cin, line);
+        printError("Gambler2: "+line);
         gs.EnemyPlayer = Parse::Gambler(line);
         cin >> gs.EnemyHandCount; cin.ignore();
         cin >> gs.CardCount; cin.ignore();
 
         for(int i = 0; i < gs.CardCount; i++)
         {
-            cin >> line; cin.ignore();
+            std::getline(std::cin, line);
             CCG::Card card = Parse::Card(line);
             switch(card.Location)
             {
