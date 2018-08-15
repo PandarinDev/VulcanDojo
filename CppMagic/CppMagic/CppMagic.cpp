@@ -3,6 +3,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <array>
 #include <queue>
 #include <algorithm>
 #include <utility>
@@ -31,6 +32,34 @@ namespace Utils
         return elems;
     }
 
+    template<class T>
+    bool vecEqual(const vector<T> v1, const vector<T> v2)
+    {
+        if(v1.size() != v2.size())
+            return false;
+        for(size_t i = 0; i < v1.size(); i++)
+        {
+            if(v1[i] != v2[i])
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    template<class T, int Size>
+    bool arrayEqual(const std::array<T, Size> v1, const std::array<T, Size> v2)
+    {
+        for(size_t i = 0; i < v1.size(); i++)
+        {
+            if(v1[i] != v2[i])
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     string toString(const string& c)
     {
         return c;
@@ -47,11 +76,30 @@ namespace Utils
         }
         return result.str();
     };
+
+    auto joinSize = [](auto collection, auto size, auto separator) -> auto
+    {
+        stringstream result;
+        for(size_t i=0; i < size; ++i)
+        {
+            result << toString(collection[i]);
+            if(i+1 != size)
+                result << separator;
+        }
+        return result.str();
+    };
     
     template<class T>
     string toString(vector<T> cards)
     {
         string r = Utils::join(cards, '\n');
+        return r;
+    }
+    
+    template<class T, int S>
+    string toString(array<T, S> cards, char size)
+    {
+        string r = Utils::joinSize(cards, size, '\n');
         return r;
     }
 };
@@ -89,17 +137,17 @@ enum CardAbility
 
 struct Card
 {
-    char CardNumber;
-    char InstanceId;
-    BoardLocation Location;
-    CardType Type;
-	char Cost;
-	char AttackValue;
-	char DefenseValue;
-    CardAbility Abilities;
-	char MyHealthChange;
-	char EnemyHealthChange;
-	char CardDraw;
+    char CardNumber = 0;
+    char InstanceId = 0;
+    BoardLocation Location = BoardLocation::InHand;
+    CardType Type = CardType::Creature;
+	char Cost = 0;
+	char AttackValue = 0;
+	char DefenseValue = 0;
+    CardAbility Abilities = CardAbility::Nothing;
+	char MyHealthChange = 0;
+	char EnemyHealthChange = 0;
+	char CardDraw = 0;
 
     bool DidAttack = false;
     
@@ -343,20 +391,6 @@ void printError(const string& msg)
     cerr << msg << endl;
 }
 
-bool vecEqual(const vector<Card> v1, const vector<Card> v2)
-{
-    if(v1.size() != v2.size())
-        return false;
-    for(size_t i = 0; i < v1.size(); i++)
-    {
-        if(v1[i] != v2[i])
-        {
-            return false;
-        }
-    }
-    return true;
-}
-
 struct GameState
 {
     Gambler MyPlayer;
@@ -364,10 +398,21 @@ struct GameState
     int EnemyHandCount;
     int CardCount; // Cards in my hand + on the board
     vector<Card> AllCards;
-    vector<Card> MyHand;
+    
+    array<Card, 8> MyHand;
+    array<Card, 6> MyBoard;
+    array<Card, 6> EnemyBoard;
+    array<Card, 6> PassiveCards;
+
+    char MyHandCount = 0;
+    char MyBoardCount = 0;
+    char EnemyBoardCount = 0;
+    char PassiveCardsCount = 0;
+
+    /*vector<Card> MyHand;
     vector<Card> MyBoard;
     vector<Card> EnemyBoard;
-    vector<Card> PassiveCards;
+    vector<Card> PassiveCards;*/
     
     GameState() = default;
     GameState(const GameState&) = default;
@@ -376,7 +421,12 @@ struct GameState
 
     string ToString() const
     {
-        vector<string> a{Utils::toString(MyHand), Utils::toString(MyBoard), Utils::toString(EnemyBoard), Utils::toString(PassiveCards)};
+        vector<string> a{
+            Utils::toString(MyHand, MyHandCount), 
+            Utils::toString(MyBoard, MyBoardCount), 
+            Utils::toString(EnemyBoard, EnemyBoardCount), 
+            Utils::toString(PassiveCards, PassiveCardsCount)
+        };
         string cards = Utils::toString(a);
         stringstream ss;
         ss << MyPlayer.ToString() << endl << EnemyPlayer.ToString() << endl << EnemyHandCount << endl << CardCount << endl << cards;
@@ -390,11 +440,40 @@ struct GameState
             EnemyPlayer == c.EnemyPlayer &&
             EnemyHandCount == c.EnemyHandCount &&
             CardCount == c.CardCount &&
-            vecEqual(MyHand, c.MyHand) &&
-            vecEqual(MyBoard, c.MyBoard) &&
-            vecEqual(EnemyBoard, c.EnemyBoard) &&
-            vecEqual(PassiveCards, c.PassiveCards);
+            Utils::arrayEqual(MyHand, c.MyHand) &&
+            Utils::arrayEqual(MyBoard, c.MyBoard) &&
+            Utils::arrayEqual(EnemyBoard, c.EnemyBoard) &&
+            Utils::arrayEqual(PassiveCards, c.PassiveCards);
         return result;
+    }
+
+    void AddCardToMyHand(const Card& c) { AddCardToArray(MyHand, MyHandCount, c); }
+    void AddCardToMyBoard(const Card& c) { AddCardToArray(MyBoard, MyBoardCount, c); }
+    void AddCardToEnemyBoard(const Card& c) { AddCardToArray(EnemyBoard, EnemyBoardCount, c); }
+    void AddCardToPassiveCards(const Card& c) { AddCardToArray(PassiveCards, PassiveCardsCount, c); }
+
+    template<class T, int S>
+    inline static void AddCardToArray(array<T, S>& arr, char& counter, const Card& c)
+    {
+        arr[counter] = c;
+        counter++;
+    }
+
+    void RemoveCardFromMyHand(const array<Card, 8>::iterator& it) { RemoveCardFromArray(MyHand, MyHandCount, it); }
+    void RemoveCardFromMyBoard(const array<Card, 6>::iterator& it) { RemoveCardFromArray(MyBoard, MyBoardCount, it); }
+    void RemoveCardFromEnemyBoard(const array<Card, 6>::iterator& it) { RemoveCardFromArray(EnemyBoard, EnemyBoardCount, it); }
+    void RemoveCardFromPassiveCards(const array<Card, 6>::iterator& it) { RemoveCardFromArray(PassiveCards, PassiveCardsCount, it); }
+    
+    static void RemoveCardFromArray(array<Card, 6>& arr, char& counter, const array<Card, 6>::iterator& it)
+    {
+        *it = arr[counter];
+        counter--;
+    }
+
+    static void RemoveCardFromArray(array<Card, 8>& arr, char& counter, const array<Card, 8>::iterator& it)
+    {
+        *it = arr[counter];
+        counter--;
     }
 };
 
@@ -457,12 +536,12 @@ namespace Simulator
 
     void AttackAction(GameState& state, int attackerId, int defenderId)
     {
-        auto attIndex = find_if(state.MyBoard.begin(), state.MyBoard.end(), [=](const Card& c) { return c.InstanceId == attackerId;});
+        auto attIndex = find_if(state.MyBoard.begin(), state.MyBoard.begin()+state.MyBoardCount, [=](const Card& c) { return c.InstanceId == attackerId;});
         auto& attacker = *attIndex;
 
         if(defenderId != GameAction::EnemyPlayerId)
         {
-            auto defIndex = find_if(state.EnemyBoard.begin(), state.EnemyBoard.end(), [=](const Card& c) { return c.InstanceId == defenderId;});
+            auto defIndex = find_if(state.EnemyBoard.begin(), state.EnemyBoard.begin()+state.EnemyBoardCount, [=](const Card& c) { return c.InstanceId == defenderId;});
             auto& defender = *defIndex;
             char attackerHpBefore = attacker.DefenseValue;
             char defenderHpBefore = defender.DefenseValue;
@@ -471,12 +550,12 @@ namespace Simulator
             Drain(state.EnemyPlayer, defender, attackerHpBefore - max(static_cast<char>(0), attacker.DefenseValue));
             if(attacker.DefenseValue <= 0)
             {
-                state.MyBoard.erase(attIndex);
+                state.RemoveCardFromMyBoard(attIndex);
                 state.CardCount -= 1;
             }
             if(defender.DefenseValue <= 0)
             {
-                state.EnemyBoard.erase(defIndex);
+                state.RemoveCardFromEnemyBoard(defIndex);
                 state.CardCount -= 1;
                 if(attacker.HasBreakthrough())
                 {
@@ -494,7 +573,7 @@ namespace Simulator
 
     void UseItemAction(GameState& state, int itemId, int targetId)
     {
-        auto itemIndex = find_if(state.MyHand.begin(), state.MyHand.end(), [=](const Card& c) { return c.InstanceId == itemId;});
+        auto itemIndex = find_if(state.MyHand.begin(), state.MyHand.begin()+state.MyHandCount, [=](const Card& c) { return c.InstanceId == itemId;});
         auto& item = *itemIndex;
         state.MyPlayer.Mana -= item.Cost;
         state.CardCount -= 1;
@@ -504,7 +583,7 @@ namespace Simulator
 
         if(item.Type == CardType::GreenItem)
         {
-            auto& creature = *find_if(state.MyBoard.begin(), state.MyBoard.end(), [=](const Card& c) { return c.InstanceId == targetId;});
+            auto& creature = *find_if(state.MyBoard.begin(), state.MyBoard.begin()+state.MyBoardCount, [=](const Card& c) { return c.InstanceId == targetId;});
             creature.AddAbility(item.Abilities);
             creature.AttackValue += item.AttackValue;
             creature.DefenseValue += item.DefenseValue;
@@ -512,34 +591,34 @@ namespace Simulator
         else if(item.Type == CardType::RedItem ||
             (item.Type == CardType::BlueItem && targetId != GameAction::EnemyPlayerId))
         {
-            auto& creature = *find_if(state.EnemyBoard.begin(), state.EnemyBoard.end(), [=](const Card& c) { return c.InstanceId == targetId;});
+            auto& creature = *find_if(state.EnemyBoard.begin(), state.EnemyBoard.begin()+state.EnemyBoardCount, [=](const Card& c) { return c.InstanceId == targetId;});
             creature.RemoveAbilty(item.Abilities);
             creature.AttackValue += item.AttackValue;
             creature.DefenseValue += item.DefenseValue;
         }
 
         // calling erase on iterator changes the reference to point to the next item in the vector
-        state.MyHand.erase(itemIndex);
+        state.RemoveCardFromMyHand(itemIndex);
     }
 
     void SummonCreatureAction(GameState& state, int creatureId)
     {
-        auto toSummonIndex = find_if(state.MyHand.begin(), state.MyHand.end(), [=](const Card& c) { return c.InstanceId == creatureId;});
+        auto toSummonIndex = find_if(state.MyHand.begin(), state.MyHand.begin()+state.MyHandCount, [=](const Card& c) { return c.InstanceId == creatureId;});
         auto& toSummon = *toSummonIndex;
         state.MyPlayer.Mana -= toSummon.Cost;
 
         if(toSummon.HasCharge())
         {
             toSummon.Location = BoardLocation::PlayerSide;
-            state.MyBoard.emplace_back(toSummon);
+            state.AddCardToMyBoard(toSummon);
         }
         else
         {
             toSummon.Location = BoardLocation::PlayerSidePassive;
-            state.PassiveCards.emplace_back(toSummon);
+            state.AddCardToPassiveCards(toSummon);
         }
 
-        state.MyHand.erase(toSummonIndex);
+        state.RemoveCardFromMyHand(toSummonIndex);
     }
 
     GameState SimulateAction(const GameState& gs, const GameAction& a)
@@ -627,7 +706,7 @@ namespace DraftPhase
     /// Represent a turn in the draft phase, 
     /// basically selects the card that we should pick
     /// </summary>
-    string GetBestCard(const vector<Card>& picks, int curve[])
+    string GetBestCard(const array<Card, 8>& picks, int curve[])
     {
         const int possiblePickCount = 3;
         double maxValue = -10000;
@@ -676,6 +755,11 @@ namespace BattlePhase
             }
             throw std::runtime_error("GetAction was called with bad action!");
         }
+
+        size_t size()
+        {
+            return pool.size();
+        }
     };
 
     struct GraphSolver
@@ -718,7 +802,7 @@ namespace BattlePhase
                 double value = EvaluateGameState(gs);
                 if(value > bestValue)
                 {
-                    cerr << "GraphSolver NEW best value found: " << value << endl;
+                    //cerr << "GraphSolver NEW best value found: " << value << endl;
                     bestSeq = toState;
                     bestValue = value;
                     bestCounter = counter;
@@ -752,6 +836,7 @@ namespace BattlePhase
             auto elapsed = sw.ElapsedMilliseconds();
             cerr << "GraphSolver finished in " << elapsed << " ms with " << counter << " nodes" << endl;
             cerr << "GraphSolver Chosen action has index: " << bestCounter << ", has value: " << bestValue << " , is " << bestSeq.ToString() << endl ;
+            cerr << "GraphSolver action pool size: " << actionPool.size() << endl;
             return bestSeq;
         }
 
@@ -768,71 +853,70 @@ namespace BattlePhase
             * */
             vector<GameAction> result;
 
-            bool enemyHasGuard = std::any_of(gs.EnemyBoard.begin(), gs.EnemyBoard.end(), [](auto& c){return c.HasGuard();});
+            bool enemyHasGuard = std::any_of(gs.EnemyBoard.begin(), gs.EnemyBoard.begin()+gs.EnemyBoardCount, [](auto& c){return c.HasGuard();});
             if(!enemyHasGuard)
             {
-                for(auto& c : gs.MyBoard)
+                for(auto i = 0; i < gs.MyBoardCount; i++)
                 {
+                    auto& c = gs.MyBoard[i];
                     if(c.DidAttack)
                         continue;
                     result.emplace_back(GameActionFactory::CreatureAttack(c.InstanceId, GameAction::EnemyPlayerId));
                     
-                    for(auto& e : gs.EnemyBoard)
+                    for(auto j = 0; j < gs.EnemyBoardCount; j++)
                     {
+                        auto& e = gs.EnemyBoard[j];
                         result.emplace_back(GameActionFactory::CreatureAttack(c.InstanceId, e.InstanceId));
                     }
                 }
             }
             else
             {
-                for(auto& c : gs.MyBoard)
+                for(auto i = 0; i < gs.MyBoardCount; i++)
                 {
+                    auto& c = gs.MyBoard[i];
                     if(c.DidAttack)
-                        continue;                    
-                    for(auto& e : gs.EnemyBoard)
+                        continue;                 
+                    for(auto j = 0; j < gs.EnemyBoardCount; j++)
                     {
+                        auto& e = gs.EnemyBoard[j];
                         if(e.HasGuard())
                             result.emplace_back(GameActionFactory::CreatureAttack(c.InstanceId, e.InstanceId));
                     }
                 }
             }
             
-            for(auto& c : gs.MyHand)
+            for(auto i = 0; i < gs.MyHandCount; i++)
             {
+                auto& c = gs.MyHand[i];
                 if(c.Cost > gs.MyPlayer.Mana)
                     continue;
 
                 if(c.Type == CardType::Creature)
                 {
-                    result.emplace_back(GameActionFactory::SummonCreature(c.InstanceId));
+                    if(gs.MyBoardCount + gs.PassiveCardsCount < 6)
+                        result.emplace_back(GameActionFactory::SummonCreature(c.InstanceId));
                 }
                 else if(c.Type == CardType::GreenItem)
                 {
-                    for(auto& b : gs.MyBoard)
+                    for(auto j = 0; j < gs.MyBoardCount; j++)
                     {
+                        auto& b = gs.MyBoard[j];
                         result.emplace_back(GameActionFactory::UseItem(c.InstanceId, b.InstanceId));
                     }
                 }
-                else if(c.Type == CardType::RedItem)
+                else if(c.Type == CardType::RedItem || 
+                    c.Type == CardType::BlueItem && c.DefenseValue != 0)
                 {
-                    for(auto& b : gs.EnemyBoard)
+                    for(auto j = 0; j < gs.EnemyBoardCount; j++)
                     {
-                        result.emplace_back(GameActionFactory::UseItem(c.InstanceId, b.InstanceId));
-                    }
-                }
-                else if(c.Type == CardType::BlueItem && c.DefenseValue != 0)
-                {
-                    for(auto& b : gs.EnemyBoard)
-                    {
+                        auto& b = gs.EnemyBoard[j];
                         result.emplace_back(GameActionFactory::UseItem(c.InstanceId, b.InstanceId));
                     }
                 }
                 else if(c.Type == CardType::BlueItem)
                 {
-                    for(auto& b : gs.EnemyBoard)
-                    {
-                        result.emplace_back(GameActionFactory::UseItem(c.InstanceId, GameAction::EnemyPlayerId));
-                    }
+                    result.emplace_back(GameActionFactory::UseItem(c.InstanceId, GameAction::EnemyPlayerId));
                 }
             }
 
@@ -849,8 +933,8 @@ namespace BattlePhase
             result += gs.MyBoard.size();
             result += gs.PassiveCards.size();
             auto valueGatherer = [](double s, auto c) {return s + (double)c.AttackValue + (double)c.DefenseValue;};
-            result += std::accumulate(gs.MyBoard.begin(), gs.MyBoard.end(), 0.0, valueGatherer);
-            result -= std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoard.end(), 0.0, valueGatherer);
+            result += std::accumulate(gs.MyBoard.begin(), gs.MyBoard.begin()+gs.MyBoardCount, 0.0, valueGatherer);
+            result -= std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoard.begin()+gs.EnemyBoardCount, 0.0, valueGatherer);
             return result;
         }
     };
@@ -860,7 +944,6 @@ struct Parse
 {
     static CCG::Gambler Gambler(const string& input)
     {
-        //Console.Error.WriteLine("!parse Gambler: " + input);
         std::vector<std::string> inputs = Utils::split(input, ' ');
         CCG::Gambler gambler;
         gambler.Health = stoi(inputs[0]),
@@ -905,6 +988,25 @@ struct Parse
         return card;
     }
 
+    static void AddCardByLocation(const CCG::Card& card, CCG::GameState& gs)
+    {
+        switch(card.Location)
+        {
+            case BoardLocation::EnemySide:
+                gs.AddCardToEnemyBoard(card);
+                break;
+            case BoardLocation::InHand:
+                gs.AddCardToMyHand(card);
+                break;
+            case BoardLocation::PlayerSide:
+                gs.AddCardToMyBoard(card);
+                break;
+            case BoardLocation::PlayerSidePassive:
+                gs.AddCardToPassiveCards(card);
+                break;
+        }
+    }
+
     static CCG::GameState GameStateFromConsole()
     {
         CCG::GameState gs;
@@ -920,21 +1022,7 @@ struct Parse
         {
             std::getline(std::cin, line);
             CCG::Card card = Parse::Card(line);
-            switch(card.Location)
-            {
-                case BoardLocation::EnemySide:
-                    gs.EnemyBoard.emplace_back(card);
-                    break;
-                case BoardLocation::InHand:
-                    gs.MyHand.emplace_back(card);
-                    break;
-                case BoardLocation::PlayerSide:
-                    gs.MyBoard.emplace_back(card);
-                    break;
-                case BoardLocation::PlayerSidePassive:
-                    gs.PassiveCards.emplace_back(card);
-                    break;
-            }
+            AddCardByLocation(card, gs);
         }
         return gs;
     }
@@ -950,22 +1038,7 @@ struct Parse
         for(int i = 0; i < gs.CardCount; i++)
         {
             CCG::Card card = Parse::Card(lines.front()); lines.pop();
-
-            switch(card.Location)
-            {
-                case BoardLocation::EnemySide:
-                    gs.EnemyBoard.emplace_back(card);
-                    break;
-                case BoardLocation::InHand:
-                    gs.MyHand.emplace_back(card);
-                    break;
-                case BoardLocation::PlayerSide:
-                    gs.MyBoard.emplace_back(card);
-                    break;
-                case BoardLocation::PlayerSidePassive:
-                    gs.PassiveCards.emplace_back(card);
-                    break;
-            }
+            AddCardByLocation(card, gs);
         }
         return gs;
     }
@@ -1069,6 +1142,52 @@ int mainReal()
                 "3 8 -1 0 1 2 2 ------ 0 0 0",
                 "27 4 -1 0 2 2 2 ------ 2 0 0"
 
+//////////////// Timeout test
+23 9 15 20
+23 8 16 20
+5
+15
+23 1 0 0 7 8 8 ------ 0 0 0
+77 11 0 0 7 7 7 B----- 0 0 0
+114 13 0 0 7 7 7 ---G-- 0 0 0
+74 21 0 0 5 5 4 B--G-- 0 0 0
+69 23 0 0 3 4 4 B----- 0 0 0
+63 27 0 0 2 0 4 ---G-W 0 0 0
+99 29 0 0 3 2 5 ---G-- 0 0 0
+86 7 1 0 3 1 5 -C---- 0 0 0
+1 15 1 0 1 2 1 ------ 0 0 0
+37 3 1 0 6 5 5 ------ 0 0 0
+75 19 1 0 5 7 6 B----- 0 0 0
+58 22 -1 0 6 5 6 B----- 0 0 0
+69 4 -1 0 3 4 4 B----- 0 0 0
+75 28 -1 0 5 6 5 B----- 0 0 0
+69 20 -1 0 3 4 4 B----- 0 0 0
+
+                "23 9 15 20", "23 8 16 20", "5", "15",
+                "23 1 0 0 7 8 8 ------ 0 0 0",
+                "77 11 0 0 7 7 7 B----- 0 0 0",
+                "114 13 0 0 7 7 7 ---G-- 0 0 0",
+                "74 21 0 0 5 5 4 B--G-- 0 0 0",
+                "69 23 0 0 3 4 4 B----- 0 0 0",
+                "63 27 0 0 2 0 4 ---G-W 0 0 0",
+                "99 29 0 0 3 2 5 ---G-- 0 0 0",
+                "86 7 1 0 3 1 5 -C---- 0 0 0",
+                "1 15 1 0 1 2 1 ------ 0 0 0",
+                "37 3 1 0 6 5 5 ------ 0 0 0",
+                "75 19 1 0 5 7 6 B----- 0 0 0",
+                "58 22 -1 0 6 5 6 B----- 0 0 0",
+                "69 4 -1 0 3 4 4 B----- 0 0 0",
+                "75 28 -1 0 5 6 5 B----- 0 0 0",
+                "69 20 -1 0 3 4 4 B----- 0 0 0"
+
+
+Server:
+GraphSolver finished in 91 ms with 1310 nodes
+GraphSolver Chosen action has index: 696, has value: 11 , is ATTACK 7 -1;ATTACK 3 -1;ATTACK 19 -1
+
+Release:
+GraphSolver finished in 14491 ms with 5854966 nodes
+GraphSolver Chosen action has index: 3826097, has value: 17 , is ATTACK 7 -1;ATTACK 15 28;ATTACK 3 20;ATTACK 19 28;SUMMON 23;SUMMON 27;SUMMON 29
 */
 
 int mainTest()
@@ -1085,16 +1204,22 @@ int mainTest()
     {
         sw.Restart();
         CCG::GameState gs = CCG::Parse::GameState(std::queue<string>({
-                "28 3 23 25", "32 2 23 25", "5", "9",
-                "19 1 0 0 5 5 6 ------ 0 0 0",
-                "86 3 0 0 3 1 5 -C---- 0 0 0",
-                "87 5 0 0 4 2 5 -C-G-- 0 0 0",
-                "22 7 0 0 6 7 5 ------ 0 0 0",
-                "32 9 0 0 3 3 2 ------ 0 0 1",
-                "122 11 0 1 2 1 3 ---G-- 0 0 0",
-                "27 13 0 0 2 2 2 ------ 2 0 0",
-                "3 8 -1 0 1 2 2 ------ 0 0 0",
-                "27 4 -1 0 2 2 2 ------ 2 0 0"
+                "23 9 15 20", "23 8 16 20", "5", "15",
+                "23 1 0 0 7 8 8 ------ 0 0 0",
+                "77 11 0 0 7 7 7 B----- 0 0 0",
+                "114 13 0 0 7 7 7 ---G-- 0 0 0",
+                "74 21 0 0 5 5 4 B--G-- 0 0 0",
+                "69 23 0 0 3 4 4 B----- 0 0 0",
+                "63 27 0 0 2 0 4 ---G-W 0 0 0",
+                "99 29 0 0 3 2 5 ---G-- 0 0 0",
+                "86 7 1 0 3 1 5 -C---- 0 0 0",
+                "1 15 1 0 1 2 1 ------ 0 0 0",
+                "37 3 1 0 6 5 5 ------ 0 0 0",
+                "75 19 1 0 5 7 6 B----- 0 0 0",
+                "58 22 -1 0 6 5 6 B----- 0 0 0",
+                "69 4 -1 0 3 4 4 B----- 0 0 0",
+                "75 28 -1 0 5 6 5 B----- 0 0 0",
+                "69 20 -1 0 3 4 4 B----- 0 0 0"
             }));
         
         CCG::printError(gs.ToString());
