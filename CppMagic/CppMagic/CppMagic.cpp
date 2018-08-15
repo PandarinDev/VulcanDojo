@@ -467,6 +467,8 @@ namespace Simulator
             char attackerHpBefore = attacker.DefenseValue;
             char defenderHpBefore = defender.DefenseValue;
             AttackCreature(attacker, defender);
+            Drain(state.MyPlayer, attacker, max(0, defenderHpBefore - max(static_cast<char>(0), defender.DefenseValue)));
+            Drain(state.EnemyPlayer, defender, attackerHpBefore - max(static_cast<char>(0), attacker.DefenseValue));
             if(attacker.DefenseValue <= 0)
             {
                 state.MyBoard.erase(attIndex);
@@ -481,8 +483,6 @@ namespace Simulator
                     state.EnemyPlayer.Health += defender.DefenseValue;
                 }
             }
-            Drain(state.MyPlayer, attacker, max(0, defenderHpBefore - max(static_cast<char>(0), defender.DefenseValue)));
-            Drain(state.EnemyPlayer, defender, attackerHpBefore - max(static_cast<char>(0), attacker.DefenseValue));
         }
         else
         {
@@ -497,7 +497,6 @@ namespace Simulator
         auto itemIndex = find_if(state.MyHand.begin(), state.MyHand.end(), [=](const Card& c) { return c.InstanceId == itemId;});
         auto& item = *itemIndex;
         state.MyPlayer.Mana -= item.Cost;
-        state.MyHand.erase(itemIndex);
         state.CardCount -= 1;
 
         state.MyPlayer.Health += item.MyHealthChange;
@@ -518,6 +517,9 @@ namespace Simulator
             creature.AttackValue += item.AttackValue;
             creature.DefenseValue += item.DefenseValue;
         }
+
+        // calling erase on iterator changes the reference to point to the next item in the vector
+        state.MyHand.erase(itemIndex);
     }
 
     void SummonCreatureAction(GameState& state, int creatureId)
@@ -525,7 +527,6 @@ namespace Simulator
         auto toSummonIndex = find_if(state.MyHand.begin(), state.MyHand.end(), [=](const Card& c) { return c.InstanceId == creatureId;});
         auto& toSummon = *toSummonIndex;
         state.MyPlayer.Mana -= toSummon.Cost;
-        state.MyHand.erase(toSummonIndex);
 
         if(toSummon.HasCharge())
         {
@@ -537,6 +538,8 @@ namespace Simulator
             toSummon.Location = BoardLocation::PlayerSidePassive;
             state.PassiveCards.emplace_back(toSummon);
         }
+
+        state.MyHand.erase(toSummonIndex);
     }
 
     GameState SimulateAction(const GameState& gs, const GameAction& a)
@@ -639,7 +642,9 @@ namespace DraftPhase
             }
         }
         CurveAdd(picks[bestPickIndex].Cost, curve);
-        return "PICK " + bestPickIndex;
+        stringstream ss;
+        ss << "PICK " << bestPickIndex;
+        return ss.str();
     }
 };
 
@@ -694,6 +699,7 @@ namespace BattlePhase
             sw.Restart();
 
             int counter = 0;
+            int bestCounter = 0;
             while(!possibleStates.empty())
             {
                 counter++;
@@ -715,6 +721,7 @@ namespace BattlePhase
                     cerr << "GraphSolver NEW best value found: " << value << endl;
                     bestSeq = toState;
                     bestValue = value;
+                    bestCounter = counter;
                 }
 
                 auto actions = GetPossibleActions(gs);
@@ -744,7 +751,7 @@ namespace BattlePhase
 
             auto elapsed = sw.ElapsedMilliseconds();
             cerr << "GraphSolver finished in " << elapsed << " ms with " << counter << " nodes" << endl;
-            cerr << "GraphSolver Chosen action has value: " << bestValue << " , is " << bestSeq.ToString() << endl ;
+            cerr << "GraphSolver Chosen action has index: " << bestCounter << ", has value: " << bestValue << " , is " << bestSeq.ToString() << endl ;
             return bestSeq;
         }
 
@@ -903,10 +910,8 @@ struct Parse
         CCG::GameState gs;
         string line;
         std::getline(std::cin, line);
-        printError("Gambler1: "+line);
         gs.MyPlayer = Parse::Gambler(line);
         std::getline(std::cin, line);
-        printError("Gambler2: "+line);
         gs.EnemyPlayer = Parse::Gambler(line);
         cin >> gs.EnemyHandCount; cin.ignore();
         cin >> gs.CardCount; cin.ignore();
@@ -998,20 +1003,29 @@ int mainReal()
     }
 }
 
-int mainTest()
-{
-    int turn = 0;
 
-    const int draftTurnCount = 30;
-    const int lastTurn = draftTurnCount + 50;
-    int curve[] = { 2, 8, 7, 5, 4, 2, 2 };
+/*
+//////////Test:
+9 7 16 5
+33 7 19 25
+4
+15
+75 10 0 0 5 6 5 B----- 0 0 0
+50 14 0 0 3 3 2 ----L- 0 0 0
+23 16 0 0 7 8 8 ------ 0 0 0
+100 20 0 0 3 1 6 ---G-- 0 0 0
+99 22 0 0 3 2 5 ---G-- 0 0 0
+99 24 0 0 3 2 5 ---G-- 0 0 0
+93 26 0 0 1 2 1 ---G-- 0 0 0
+75 28 0 0 5 6 5 B----- 0 0 0
+17 4 1 0 4 4 3 ------ 0 0 0
+10 6 1 0 3 3 1 --D--- 0 0 0
+69 8 1 0 3 4 4 B----- 0 0 0
+69 3 -1 0 3 4 1 B----- 0 0 0
+1 17 -1 0 1 2 1 ------ 0 0 0
+76 1 -1 0 6 5 5 B-D--- 0 0 0
+45 9 -1 0 6 6 5 B-D--- -3 0 0
 
-    CCG::Stopwatch sw;
-    // game loop
-    //while (true)
-    {
-        sw.Restart();
-        CCG::GameState gs = CCG::Parse::GameState(std::queue<string>({
                 "9 7 16 5", "33 7 19 25", "4", "15",
                 "75 10 0 0 5 6 5 B----- 0 0 0",
                 "50 14 0 0 3 3 2 ----L- 0 0 0",
@@ -1028,6 +1042,59 @@ int mainTest()
                 "1 17 -1 0 1 2 1 ------ 0 0 0",
                 "76 1 -1 0 6 5 5 B-D--- 0 0 0",
                 "45 9 -1 0 6 6 5 B-D--- -3 0 0"
+
+/////////////Error: SUMMON 3;Attack 5 -1
+28 3 23 25
+32 2 23 25
+5
+9
+19 1 0 0 5 5 6 ------ 0 0 0
+86 3 0 0 3 1 5 -C---- 0 0 0
+87 5 0 0 4 2 5 -C-G-- 0 0 0
+22 7 0 0 6 7 5 ------ 0 0 0
+32 9 0 0 3 3 2 ------ 0 0 1
+122 11 0 1 2 1 3 ---G-- 0 0 0
+27 13 0 0 2 2 2 ------ 2 0 0
+3 8 -1 0 1 2 2 ------ 0 0 0
+27 4 -1 0 2 2 2 ------ 2 0 0
+
+                "28 3 23 25", "32 2 23 25", "5", "9",
+                "19 1 0 0 5 5 6 ------ 0 0 0",
+                "86 3 0 0 3 1 5 -C---- 0 0 0",
+                "87 5 0 0 4 2 5 -C-G-- 0 0 0",
+                "22 7 0 0 6 7 5 ------ 0 0 0",
+                "32 9 0 0 3 3 2 ------ 0 0 1",
+                "122 11 0 1 2 1 3 ---G-- 0 0 0",
+                "27 13 0 0 2 2 2 ------ 2 0 0",
+                "3 8 -1 0 1 2 2 ------ 0 0 0",
+                "27 4 -1 0 2 2 2 ------ 2 0 0"
+
+*/
+
+int mainTest()
+{
+    int turn = 0;
+
+    const int draftTurnCount = 30;
+    const int lastTurn = draftTurnCount + 50;
+    int curve[] = { 2, 8, 7, 5, 4, 2, 2 };
+
+    CCG::Stopwatch sw;
+    // game loop
+    //while (true)
+    {
+        sw.Restart();
+        CCG::GameState gs = CCG::Parse::GameState(std::queue<string>({
+                "28 3 23 25", "32 2 23 25", "5", "9",
+                "19 1 0 0 5 5 6 ------ 0 0 0",
+                "86 3 0 0 3 1 5 -C---- 0 0 0",
+                "87 5 0 0 4 2 5 -C-G-- 0 0 0",
+                "22 7 0 0 6 7 5 ------ 0 0 0",
+                "32 9 0 0 3 3 2 ------ 0 0 1",
+                "122 11 0 1 2 1 3 ---G-- 0 0 0",
+                "27 13 0 0 2 2 2 ------ 2 0 0",
+                "3 8 -1 0 1 2 2 ------ 0 0 0",
+                "27 4 -1 0 2 2 2 ------ 2 0 0"
             }));
         
         CCG::printError(gs.ToString());
