@@ -11,8 +11,6 @@
 
 using namespace std;
 
-
-
 namespace Utils
 {
     template<typename Out>
@@ -57,6 +55,8 @@ namespace Utils
     }
 };
 
+namespace CCG
+{
 
 enum BoardLocation
 {
@@ -854,7 +854,7 @@ struct Parse
     {
         //Console.Error.WriteLine("!parse Gambler: " + input);
         std::vector<std::string> inputs = Utils::split(input, ' ');
-        ::Gambler gambler;
+        CCG::Gambler gambler;
         gambler.Health = stoi(inputs[0]),
         gambler.Mana = stoi(inputs[1]),
         gambler.DeckSize = stoi(inputs[2]),
@@ -878,11 +878,11 @@ struct Parse
         return (CardAbility)result;
     }
 
-    static ::Card Card(const string& input)
+    static CCG::Card Card(const string& input)
     {
         //Console.Error.WriteLine("!parse Card: " + input);
         std::vector<std::string> inputs = Utils::split(input, ' ');
-        ::Card card;
+        CCG::Card card;
         card.CardNumber = stoi(inputs[0]);
         card.InstanceId = stoi(inputs[1]);
         card.Location = (BoardLocation)stoi(inputs[2]);
@@ -897,9 +897,9 @@ struct Parse
         return card;
     }
 
-    static ::GameState GameStateFromConsole()
+    static CCG::GameState GameStateFromConsole()
     {
-        ::GameState gs;
+        CCG::GameState gs;
         string line;
         cin >> line; cin.ignore();
         gs.MyPlayer = Parse::Gambler(line);
@@ -911,7 +911,7 @@ struct Parse
         for(int i = 0; i < gs.CardCount; i++)
         {
             cin >> line; cin.ignore();
-            ::Card card = Parse::Card(line);
+            CCG::Card card = Parse::Card(line);
             switch(card.Location)
             {
                 case BoardLocation::EnemySide:
@@ -931,9 +931,9 @@ struct Parse
         return gs;
     }
 
-    static ::GameState GameState(queue<string> lines)
+    static CCG::GameState GameState(queue<string> lines)
     {
-        ::GameState gs;
+        CCG::GameState gs;
         gs.MyPlayer = Parse::Gambler(lines.front()); lines.pop();
         gs.EnemyPlayer = Parse::Gambler(lines.front()); lines.pop();
         gs.EnemyHandCount = stoi(lines.front()); lines.pop();
@@ -941,7 +941,7 @@ struct Parse
 
         for(int i = 0; i < gs.CardCount; i++)
         {
-            ::Card card = Parse::Card(lines.front()); lines.pop();
+            CCG::Card card = Parse::Card(lines.front()); lines.pop();
 
             switch(card.Location)
             {
@@ -962,6 +962,8 @@ struct Parse
         return gs;
     }
 };
+
+}
 
 /**
 * Auto-generated code below aims at helping you parse
@@ -1017,7 +1019,7 @@ int mainReal()
     // game loop
     while(true)
     {
-        GameState gs = Parse::GameStateFromConsole();
+        CCG::GameState gs = CCG::Parse::GameStateFromConsole();
         cerr << gs.ToString() << endl;
 
         if(turn < lastTurn)
@@ -1027,11 +1029,11 @@ int mainReal()
 
         if(turn <= draftTurnCount)
         {
-            cout << DraftPhase::GetBestCard(gs.MyHand, curve) << endl;
+            cout << CCG::DraftPhase::GetBestCard(gs.MyHand, curve) << endl;
         }
         else
         {
-            cout << BattlePhase::GraphSolver::ProcessTurn(gs, 95) << endl;
+            cout << CCG::BattlePhase::GraphSolver::ProcessTurn(gs, 95) << endl;
         }
     }
 }
@@ -1044,12 +1046,12 @@ int mainTest()
     const int lastTurn = draftTurnCount + 50;
     int curve[] = { 2, 8, 7, 5, 4, 2, 2 };
 
-    Stopwatch sw;
+    CCG::Stopwatch sw;
     // game loop
     //while (true)
     {
         sw.Restart();
-        GameState gs = Parse::GameState(std::queue<string>({
+        CCG::GameState gs = CCG::Parse::GameState(std::queue<string>({
                 "9 7 16 5", "33 7 19 25", "4", "15",
                 "75 10 0 0 5 6 5 B----- 0 0 0",
                 "50 14 0 0 3 3 2 ----L- 0 0 0",
@@ -1068,9 +1070,9 @@ int mainTest()
                 "45 9 -1 0 6 6 5 B-D--- -3 0 0"
             }));
         
-        printError(gs.ToString());
+        CCG::printError(gs.ToString());
 
-        cout << BattlePhase::GraphSolver::ProcessTurn(gs, 9500) << endl;
+        cout << CCG::BattlePhase::GraphSolver::ProcessTurn(gs, 9500) << endl;
 
         cerr << "Turn took " << sw.ElapsedMilliseconds() << " ms" << endl;
     }

@@ -1,6 +1,8 @@
-CppMagic/CppMagic/Debug/
 CppMagic/.vs
 CppMagic/Debug/
+CppMagic/CppMagic/Debug/
+CppMagic/Release/
+CppMagic/CppMagic/Release/
 
 *.ilk
 *.pdb
