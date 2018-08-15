@@ -8,6 +8,7 @@
 #include <utility>
 #include <numeric>
 #include <memory>
+#include <stdexcept>
 
 using namespace std;
 
@@ -88,17 +89,17 @@ enum CardAbility
 
 struct Card
 {
-    int CardNumber;
-    int InstanceId;
+    char CardNumber;
+    char InstanceId;
     BoardLocation Location;
-    CardType CardType;
-    int Cost;
-    int AttackValue;
-    int DefenseValue;
+    CardType Type;
+	char Cost;
+	char AttackValue;
+	char DefenseValue;
     CardAbility Abilities;
-    int MyHealthChange;
-    int EnemyHealthChange;
-    int CardDraw;
+	char MyHealthChange;
+	char EnemyHealthChange;
+	char CardDraw;
 
     bool DidAttack = false;
     
@@ -140,7 +141,7 @@ struct Card
     string ToString() const
     {
         stringstream ss;
-        ss << CardNumber << " " << InstanceId << " " << Location << " " << CardType << " " << Cost << " " << AttackValue << " " << DefenseValue << " " << AbilitiesToString() << " " << MyHealthChange << " " << EnemyHealthChange << " " << CardDraw;
+        ss << (int)CardNumber << " " << (int)InstanceId << " " << Location << " " << Type << " " << (int)Cost << " " << (int)AttackValue << " " << (int)DefenseValue << " " << AbilitiesToString() << " " << (int)MyHealthChange << " " << (int)EnemyHealthChange << " " << (int)CardDraw;
         return ss.str();
     }
 
@@ -162,8 +163,8 @@ struct Card
 
     bool operator==(const Card& c) const
     {
-        bool result = CardNumber == c.CardNumber && InstanceId == c.InstanceId &&
-            Location == c.Location && CardType == c.CardType &&
+        auto result = CardNumber == c.CardNumber && InstanceId == c.InstanceId &&
+            Location == c.Location && Type == c.Type &&
             Cost == c.Cost && AttackValue == c.AttackValue &&
             DefenseValue == c.DefenseValue && Abilities == c.Abilities &&
             MyHealthChange == c.MyHealthChange && EnemyHealthChange == c.EnemyHealthChange &&
@@ -173,8 +174,8 @@ struct Card
 
     bool operator==(const Card& c)
     {
-        bool result = CardNumber == c.CardNumber && InstanceId == c.InstanceId &&
-            Location == c.Location && CardType == c.CardType &&
+		auto result = CardNumber == c.CardNumber && InstanceId == c.InstanceId &&
+            Location == c.Location && Type == c.Type &&
             Cost == c.Cost && AttackValue == c.AttackValue &&
             DefenseValue == c.DefenseValue && Abilities == c.Abilities &&
             MyHealthChange == c.MyHealthChange && EnemyHealthChange == c.EnemyHealthChange &&
@@ -463,8 +464,8 @@ namespace Simulator
         {
             auto defIndex = find_if(state.EnemyBoard.begin(), state.EnemyBoard.end(), [=](const Card& c) { return c.InstanceId == defenderId;});
             auto& defender = *defIndex;
-            int attackerHpBefore = attacker.DefenseValue;
-            int defenderHpBefore = defender.DefenseValue;
+            char attackerHpBefore = attacker.DefenseValue;
+            char defenderHpBefore = defender.DefenseValue;
             AttackCreature(attacker, defender);
             if(attacker.DefenseValue <= 0)
             {
@@ -480,8 +481,8 @@ namespace Simulator
                     state.EnemyPlayer.Health += defender.DefenseValue;
                 }
             }
-            Drain(state.MyPlayer, attacker, max(0, defenderHpBefore - max(0, defender.DefenseValue)));
-            Drain(state.EnemyPlayer, defender, attackerHpBefore - max(0, attacker.DefenseValue));
+            Drain(state.MyPlayer, attacker, max(0, defenderHpBefore - max(static_cast<char>(0), defender.DefenseValue)));
+            Drain(state.EnemyPlayer, defender, attackerHpBefore - max(static_cast<char>(0), attacker.DefenseValue));
         }
         else
         {
@@ -502,15 +503,15 @@ namespace Simulator
         state.MyPlayer.Health += item.MyHealthChange;
         state.EnemyPlayer.Health += item.EnemyHealthChange;
 
-        if(item.CardType == CardType::GreenItem)
+        if(item.Type == CardType::GreenItem)
         {
             auto& creature = *find_if(state.MyBoard.begin(), state.MyBoard.end(), [=](const Card& c) { return c.InstanceId == targetId;});
             creature.AddAbility(item.Abilities);
             creature.AttackValue += item.AttackValue;
             creature.DefenseValue += item.DefenseValue;
         }
-        else if(item.CardType == CardType::RedItem ||
-            (item.CardType == CardType::BlueItem && targetId != GameAction::EnemyPlayerId))
+        else if(item.Type == CardType::RedItem ||
+            (item.Type == CardType::BlueItem && targetId != GameAction::EnemyPlayerId))
         {
             auto& creature = *find_if(state.EnemyBoard.begin(), state.EnemyBoard.end(), [=](const Card& c) { return c.InstanceId == targetId;});
             creature.RemoveAbilty(item.Abilities);
@@ -596,8 +597,8 @@ namespace DraftPhase
             value -= 2;
         }
         //nonboard penalty
-        if(card.CardType == CardType::RedItem ||
-            card.CardType == CardType::BlueItem)
+        if(card.Type == CardType::RedItem ||
+            card.Type == CardType::BlueItem)
         {
             value -= 1;
         }
@@ -623,7 +624,7 @@ namespace DraftPhase
     /// Represent a turn in the draft phase, 
     /// basically selects the card that we should pick
     /// </summary>
-    string GetBestCard(vector<Card> picks, int curve[])
+    string GetBestCard(const vector<Card>& picks, int curve[])
     {
         const int possiblePickCount = 3;
         double maxValue = -10000;
@@ -668,7 +669,7 @@ namespace BattlePhase
                 if(*a == action)
                     return a;
             }
-            throw std::exception("GetAction was called with bad action!");
+            throw std::runtime_error("GetAction was called with bad action!");
         }
     };
 
@@ -734,7 +735,7 @@ namespace BattlePhase
                 //    cerr << "GraphSolver elapsed time: " << sw.ElapsedMilliseconds << " ms";
                 //}
 
-                if(sw.ElapsedMilliseconds() > 9500)
+                if(sw.ElapsedMilliseconds() > timeout)
                 {
                     printError("GraphSolver took to much time, breaking out");
                     break;
@@ -794,32 +795,32 @@ namespace BattlePhase
                 if(c.Cost > gs.MyPlayer.Mana)
                     continue;
 
-                if(c.CardType == CardType::Creature)
+                if(c.Type == CardType::Creature)
                 {
                     result.emplace_back(GameActionFactory::SummonCreature(c.InstanceId));
                 }
-                else if(c.CardType == CardType::GreenItem)
+                else if(c.Type == CardType::GreenItem)
                 {
                     for(auto& b : gs.MyBoard)
                     {
                         result.emplace_back(GameActionFactory::UseItem(c.InstanceId, b.InstanceId));
                     }
                 }
-                else if(c.CardType == CardType::RedItem)
+                else if(c.Type == CardType::RedItem)
                 {
                     for(auto& b : gs.EnemyBoard)
                     {
                         result.emplace_back(GameActionFactory::UseItem(c.InstanceId, b.InstanceId));
                     }
                 }
-                else if(c.CardType == CardType::BlueItem && c.DefenseValue != 0)
+                else if(c.Type == CardType::BlueItem && c.DefenseValue != 0)
                 {
                     for(auto& b : gs.EnemyBoard)
                     {
                         result.emplace_back(GameActionFactory::UseItem(c.InstanceId, b.InstanceId));
                     }
                 }
-                else if(c.CardType == CardType::BlueItem)
+                else if(c.Type == CardType::BlueItem)
                 {
                     for(auto& b : gs.EnemyBoard)
                     {
@@ -850,7 +851,7 @@ namespace BattlePhase
 
 struct Parse
 {
-    static Gambler Gambler(const string& input)
+    static CCG::Gambler Gambler(const string& input)
     {
         //Console.Error.WriteLine("!parse Gambler: " + input);
         std::vector<std::string> inputs = Utils::split(input, ' ');
@@ -875,7 +876,7 @@ struct Parse
         result |= (hasChar('G') ? Guard : nothing);
         result |= (hasChar('L') ? Lethal : nothing);
         result |= (hasChar('W') ? Ward : nothing);
-        return (CardAbility)result;
+        return static_cast<CardAbility>(result);
     }
 
     static CCG::Card Card(const string& input)
@@ -886,7 +887,7 @@ struct Parse
         card.CardNumber = stoi(inputs[0]);
         card.InstanceId = stoi(inputs[1]);
         card.Location = (BoardLocation)stoi(inputs[2]);
-        card.CardType = (CardType)stoi(inputs[3]);
+        card.Type = (CardType)stoi(inputs[3]);
         card.Cost = stoi(inputs[4]);
         card.AttackValue = stoi(inputs[5]);
         card.DefenseValue = stoi(inputs[6]);
@@ -965,49 +966,6 @@ struct Parse
 
 }
 
-/**
-* Auto-generated code below aims at helping you parse
-* the standard input according to the problem statement.
-*
-int main()
-{
-
-    // game loop
-    while(1) {
-        for(int i = 0; i < 2; i++) {
-            int playerHealth;
-            int playerMana;
-            int playerDeck;
-            int playerRune;
-            cin >> playerHealth >> playerMana >> playerDeck >> playerRune; cin.ignore();
-        }
-        int opponentHand;
-        cin >> opponentHand; cin.ignore();
-        int cardCount;
-        cin >> cardCount; cin.ignore();
-        for(int i = 0; i < cardCount; i++) {
-            int cardNumber;
-            int instanceId;
-            int location;
-            int cardType;
-            int cost;
-            int attack;
-            int defense;
-            string abilities;
-            int myHealthChange;
-            int opponentHealthChange;
-            int cardDraw;
-            cin >> cardNumber >> instanceId >> location >> cardType >> cost >> attack >> defense >> abilities >> myHealthChange >> opponentHealthChange >> cardDraw; cin.ignore();
-        }
-
-        // Write an action using cout. DON'T FORGET THE "<< endl"
-        // To debug: cerr << "Debug messages..." << endl;
-
-        cout << "PASS" << endl;
-    }
-}
-*/
-
 int mainReal()
 {
     int turn = 0;
@@ -1072,7 +1030,7 @@ int mainTest()
         
         CCG::printError(gs.ToString());
 
-        cout << CCG::BattlePhase::GraphSolver::ProcessTurn(gs, 9500) << endl;
+        cout << CCG::BattlePhase::GraphSolver::ProcessTurn(gs, 95000) << endl;
 
         cerr << "Turn took " << sw.ElapsedMilliseconds() << " ms" << endl;
     }
