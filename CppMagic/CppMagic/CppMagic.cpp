@@ -617,8 +617,8 @@ namespace Simulator
         {
             auto& creature = *find_if(state.EnemyBoard.begin(), state.EnemyBoard.begin()+state.EnemyBoardCount, [=](const Card& c) { return c.InstanceId == targetId;});
             creature.RemoveAbilty(item.Abilities);
-            creature.AttackValue += item.AttackValue;
-            creature.DefenseValue += item.DefenseValue;
+			creature.AttackValue = max(creature.AttackValue + item.AttackValue, 0);
+			creature.DefenseValue = max(creature.DefenseValue + item.DefenseValue, 0);
         }
 
         // calling erase on iterator changes the reference to point to the next item in the vector
@@ -850,11 +850,11 @@ namespace BattlePhase
                 //    cerr << "GraphSolver elapsed time: " << sw.ElapsedMilliseconds << " ms";
                 //}
 
-                if(sw.ElapsedMilliseconds() > timeout)
+                /*if(sw.ElapsedMilliseconds() > timeout)
                 {
                     printError("GraphSolver took to much time, breaking out");
                     break;
-                }
+                }*/
             }
 
             auto elapsed = sw.ElapsedMilliseconds();
@@ -956,7 +956,12 @@ namespace BattlePhase
             result -= gs.EnemyPlayer.Health;
             result += gs.MyBoardCount;
             result += gs.PassiveCardsCount;
-            auto valueGatherer = [](double s, auto c) {return s + (double)c.AttackValue + (double)c.DefenseValue;};
+            const auto valueGatherer = [](const double s, auto c)
+            {
+				const double hp = (double)c.AttackValue + (double)c.DefenseValue;
+				const double guard = c.HasGuard() ? (double)c.DefenseValue : 0.0;
+				return s + hp + guard;
+            };
             result += std::accumulate(gs.MyBoard.begin(), gs.MyBoard.begin()+gs.MyBoardCount, 0.0, valueGatherer);
             result -= std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoard.begin()+gs.EnemyBoardCount, 0.0, valueGatherer);
             return result;
@@ -1191,6 +1196,34 @@ int mainReal()
 				"3 15 0 0 1 2 2 ------ 0 0 0",
 				"41 14 -1 0 3 3 1 -CD--- 0 0 0"
 
+///////////////questionable item use
+29 5 19 25
+28 5 20 25
+6
+10
+79 10 0 0 8 8 8 B----- 0 0 0
+-105 12 0 2 5 0 -99 BCDGLW 0 0 0
+75 14 0 0 5 6 5 B----- 0 0 0
+72 16 0 0 4 5 3 B----- 0 0 0
+99 18 0 0 3 2 5 ---G-- 0 0 0
+73 20 0 0 4 4 4 B----- 4 0 0
+-105 22 0 2 5 0 -99 BCDGLW 0 0 0
+27 4 1 0 2 2 2 ------ 0 0 0
+73 15 -1 0 4 4 2 B----- 0 0 0
+75 9 -1 0 5 6 5 B----- 0 0 0
+
+				"29 5 19 25", "28 5 20 25", "6", "10",
+				"79 10 0 0 8 8 8 B----- 0 0 0",
+				"-105 12 0 2 5 0 -99 BCDGLW 0 0 0",
+				"75 14 0 0 5 6 5 B----- 0 0 0",
+				"72 16 0 0 4 5 3 B----- 0 0 0",
+				"99 18 0 0 3 2 5 ---G-- 0 0 0",
+				"73 20 0 0 4 4 4 B----- 4 0 0",
+				"-105 22 0 2 5 0 -99 BCDGLW 0 0 0",
+				"27 4 1 0 2 2 2 ------ 0 0 0",
+				"73 15 -1 0 4 4 2 B----- 0 0 0",
+				"75 9 -1 0 5 6 5 B----- 0 0 0"
+
 //////////////// Timeout test
 23 9 15 20
 23 8 16 20
@@ -1249,22 +1282,17 @@ int mainTest()
     {
         sw.Restart();
         CCG::GameState gs = CCG::Parse::GameState(std::queue<string>({
-			"23 9 15 20", "23 8 16 20", "5", "15",
-			"23 1 0 0 7 8 8 ------ 0 0 0",
-			"77 11 0 0 7 7 7 B----- 0 0 0",
-			"114 13 0 0 7 7 7 ---G-- 0 0 0",
-			"74 21 0 0 5 5 4 B--G-- 0 0 0",
-			"69 23 0 0 3 4 4 B----- 0 0 0",
-			"63 27 0 0 2 0 4 ---G-W 0 0 0",
-			"99 29 0 0 3 2 5 ---G-- 0 0 0",
-			"86 7 1 0 3 1 5 -C---- 0 0 0",
-			"1 15 1 0 1 2 1 ------ 0 0 0",
-			"37 3 1 0 6 5 5 ------ 0 0 0",
-			"75 19 1 0 5 7 6 B----- 0 0 0",
-			"58 22 -1 0 6 5 6 B----- 0 0 0",
-			"69 4 -1 0 3 4 4 B----- 0 0 0",
-			"75 28 -1 0 5 6 5 B----- 0 0 0",
-			"69 20 -1 0 3 4 4 B----- 0 0 0"
+			"29 5 19 25", "28 5 20 25", "6", "10",
+			"79 10 0 0 8 8 8 B----- 0 0 0",
+			"-105 12 0 2 5 0 -99 BCDGLW 0 0 0",
+			"75 14 0 0 5 6 5 B----- 0 0 0",
+			"72 16 0 0 4 5 3 B----- 0 0 0",
+			"99 18 0 0 3 2 5 ---G-- 0 0 0",
+			"73 20 0 0 4 4 4 B----- 4 0 0",
+			"-105 22 0 2 5 0 -99 BCDGLW 0 0 0",
+			"27 4 1 0 2 2 2 ------ 0 0 0",
+			"73 15 -1 0 4 4 2 B----- 0 0 0",
+			"75 9 -1 0 5 6 5 B----- 0 0 0"
             }));
         
         CCG::printError(gs.ToString());
