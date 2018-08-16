@@ -339,7 +339,7 @@ struct ActionSequence
 {
     vector<shared_ptr<GameAction>> Actions;
 
-    string ToString()
+    string ToString() const
     {
         string actions = Utils::join(Actions, ';');
         return (actions == "") ? "PASS" : actions;
@@ -615,10 +615,17 @@ namespace Simulator
         else if(item.Type == CardType::RedItem ||
             (item.Type == CardType::BlueItem && targetId != GameAction::EnemyPlayerId))
         {
-            auto& creature = *find_if(state.EnemyBoard.begin(), state.EnemyBoard.begin()+state.EnemyBoardCount, [=](const Card& c) { return c.InstanceId == targetId;});
+            auto crIndex = find_if(state.EnemyBoard.begin(), state.EnemyBoard.begin()+state.EnemyBoardCount, [=](const Card& c) { return c.InstanceId == targetId;});
+            auto& creature = *crIndex;
             creature.RemoveAbilty(item.Abilities);
 			creature.AttackValue = max(creature.AttackValue + item.AttackValue, 0);
 			creature.DefenseValue = max(creature.DefenseValue + item.DefenseValue, 0);
+            
+            if(creature.DefenseValue <= 0)
+            {
+                state.RemoveCardFromEnemyBoard(crIndex);
+                state.CardCount -= 1;
+            }
         }
 
         // calling erase on iterator changes the reference to point to the next item in the vector
@@ -826,7 +833,7 @@ namespace BattlePhase
                 const double value = EvaluateGameState(gs);
                 if(value > bestValue)
                 {
-                    //cerr << "GraphSolver NEW best value found: " << value << endl;
+                    // cerr << "GraphSolver NEW best value found: " << value << " with action " << toState.ToString() << endl;
                     bestSeq = toState;
                     bestValue = value;
                     bestCounter = counter;
@@ -1322,7 +1329,7 @@ int mainTest()
         
         CCG::printError(gs.ToString());
 
-        cout << CCG::BattlePhase::GraphSolver::ProcessTurn(gs, 95) << endl;
+        cout << CCG::BattlePhase::GraphSolver::ProcessTurn(gs, 950) << endl;
 
         cerr << "Turn took " << sw.ElapsedMilliseconds() << " ms" << endl;
     }

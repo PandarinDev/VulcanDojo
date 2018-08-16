@@ -3,6 +3,8 @@ CppMagic/Debug/
 CppMagic/CppMagic/Debug/
 CppMagic/Release/
 CppMagic/CppMagic/Release/
+CppMagic/CppMagic/x64/
+CppMagic/x64/
 
 *.ilk
 *.pdb
