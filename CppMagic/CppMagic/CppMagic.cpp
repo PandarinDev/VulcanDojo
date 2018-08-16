@@ -14,6 +14,8 @@
 
 using namespace std;
 
+using uchar = unsigned int;
+
 namespace Utils
 {
     template<typename Out>
@@ -187,12 +189,21 @@ struct Card
 	char EnemyHealthChange = 0;
 	char CardDraw = 0;
 
-    bool DidAttack = false;
+    uchar StatusFlags = 0; // Summoned + did attack
     
     Card() = default;
     Card(const Card&) = default;
     Card(Card&&) = default;
     Card& operator=(const Card&) = default;
+
+    static constexpr uchar DidAttackFlag = 0x01;
+    static constexpr uchar SummonedFlag = 0x02;
+
+    bool GetDidAttack() const { return bool(StatusFlags & DidAttackFlag);}
+    bool GetJustSummoned() const { return bool(StatusFlags & SummonedFlag);}
+    
+    void SetDidAttack(bool f)    { StatusFlags |= DidAttackFlag & f;}
+    void SetJustSummoned(bool f) { StatusFlags |= SummonedFlag & f << 1;}
 
     bool HasBreakthrough() const { return HasAbility(CardAbility::Breakthrough); }
     bool HasCharge() const { return HasAbility(CardAbility::Charge); }
@@ -426,7 +437,6 @@ struct GameState
     array<Card, 8> MyHand;
     array<Card, 6> MyBoard;
     array<Card, 6> EnemyBoard;
-    array<Card, 6> PassiveCards;
 
     char MyHandCount = 0;
     char MyBoardCount = 0;
@@ -448,8 +458,7 @@ struct GameState
         vector<string> a{
             Utils::toString(MyHand, MyHandCount), 
             Utils::toString(MyBoard, MyBoardCount), 
-            Utils::toString(EnemyBoard, EnemyBoardCount), 
-            Utils::toString(PassiveCards, PassiveCardsCount)
+            Utils::toString(EnemyBoard, EnemyBoardCount)
         };
 		vector<string> b;
 		copy_if(a.begin(), a.end(), std::back_inserter(b), [](auto a) {return a != ""; });
@@ -468,15 +477,13 @@ struct GameState
             CardCount == c.CardCount &&
             Utils::arrayEqual(MyHand, c.MyHand) &&
             Utils::arrayEqual(MyBoard, c.MyBoard) &&
-            Utils::arrayEqual(EnemyBoard, c.EnemyBoard) &&
-            Utils::arrayEqual(PassiveCards, c.PassiveCards);
+            Utils::arrayEqual(EnemyBoard, c.EnemyBoard);
         return result;
     }
 
     void AddCardToMyHand(const Card& c) { AddCardToArray(MyHand, MyHandCount, c); }
     void AddCardToMyBoard(const Card& c) { AddCardToArray(MyBoard, MyBoardCount, c); }
     void AddCardToEnemyBoard(const Card& c) { AddCardToArray(EnemyBoard, EnemyBoardCount, c); }
-    void AddCardToPassiveCards(const Card& c) { AddCardToArray(PassiveCards, PassiveCardsCount, c); }
 
     template<class T>
     inline static void AddCardToArray(T& arr, char& counter, const Card& c)
@@ -488,7 +495,6 @@ struct GameState
     void RemoveCardFromMyHand(const array<Card, 8>::iterator& it) { RemoveCardFromArray(MyHand, MyHandCount, it); }
     void RemoveCardFromMyBoard(const array<Card, 6>::iterator& it) { RemoveCardFromArray(MyBoard, MyBoardCount, it); }
     void RemoveCardFromEnemyBoard(const array<Card, 6>::iterator& it) { RemoveCardFromArray(EnemyBoard, EnemyBoardCount, it); }
-    void RemoveCardFromPassiveCards(const array<Card, 6>::iterator& it) { RemoveCardFromArray(PassiveCards, PassiveCardsCount, it); }
 
 	template<class T>
 	static void RemoveCardFromArray(T& arr, char& counter, const typename T::iterator& it)
@@ -545,14 +551,14 @@ namespace Simulator
             else
                 defender.DefenseValue -= attacker.AttackValue;
         }
-        attacker.DidAttack = true;
+        attacker.SetDidAttack(true);
     }
 
     void AttackCreature(Card& attacker, Card& defender)
     {
         HalfAttack(attacker, defender);
 
-        if(!defender.DidAttack)
+        if(!defender.GetDidAttack())
         {
             HalfAttack(defender, attacker);
         }
@@ -591,7 +597,7 @@ namespace Simulator
         {
             state.EnemyPlayer.Health -= attacker.AttackValue;
             Drain(state.MyPlayer, attacker, attacker.AttackValue);
-            attacker.DidAttack = true;
+            attacker.SetDidAttack(true);
         }
     }
 
@@ -611,6 +617,9 @@ namespace Simulator
             creature.AddAbility(item.Abilities);
             creature.AttackValue += item.AttackValue;
             creature.DefenseValue += item.DefenseValue;
+
+            if(creature.HasCharge())
+                creature.SetJustSummoned(false);
         }
         else if(item.Type == CardType::RedItem ||
             (item.Type == CardType::BlueItem && targetId != GameAction::EnemyPlayerId))
@@ -626,6 +635,10 @@ namespace Simulator
                 state.RemoveCardFromEnemyBoard(crIndex);
                 state.CardCount -= 1;
             }
+        }
+        else if(item.Type == CardType::BlueItem)
+        {
+            state.EnemyPlayer.Health += item.DefenseValue;
         }
 
         // calling erase on iterator changes the reference to point to the next item in the vector
@@ -646,7 +659,8 @@ namespace Simulator
         else
         {
             toSummon.Location = BoardLocation::PlayerSidePassive;
-            state.AddCardToPassiveCards(toSummon);
+            toSummon.SetJustSummoned(true);
+            state.AddCardToMyBoard(toSummon);
         }
 
         state.RemoveCardFromMyHand(toSummonIndex);
@@ -675,69 +689,90 @@ namespace Simulator
 
 namespace DraftPhase
 {
-    bool HaveEnoughInManaCurve(int cost, int curve[])
+    void CurveAdd(int cost, array<int, 8>& curve)
     {
-        if(cost > 1 && cost < 7 && curve[cost - 1] <= 0)
-        {
-            return true;
-        }
-        if(cost <= 1 && curve[0] <= 0)
-        {
-            return true;
-        }
-        if(cost > 6 && curve[6] <= 0)
-        {
-            return true;
-        }
-        return false;
+        int place = clamp(cost - 1, 0, 7);
+        curve[place] -= 1;
     }
 
-    double GetValue(Card card, int curve[])
+    double ManaCurveAdjust(const Card& card, array<int, 8>& curve)
+    {
+        int place = clamp(card.Cost - 1, 0, 7);
+        auto needInCurve = curve[place];
+        return needInCurve;
+    }
+    
+    double GetValue(const Card& card, array<int, 8>& curve)
     {
         //TODO: improve red and blue item values
-        double value = 0;
-        value += abs(card.AttackValue);
-        value += abs(card.DefenseValue);
+        double value = 0.0;
+        double divisor = max((int)card.Cost, 1);
+        value += (double)(abs(card.AttackValue) + abs(card.DefenseValue)) / divisor;
+        value += (double)(card.MyHealthChange - card.EnemyHealthChange) / divisor;
         value += card.CardDraw;
-        auto s = card.AbilitiesToString();
-        value +=  count_if(s.begin(), s.end(), [](auto s){return s != '-';});
-        value += (double)card.MyHealthChange / 3;
-        value -= (double)card.EnemyHealthChange / 3;
-        value -= card.Cost * 2;
-        //marginal penalty
-        if(card.Cost == 0 || card.AttackValue == 0)
+       
+        array<double, 6> abilityValues;
+        if(card.Type == CardType::Creature)
         {
-            value -= 2;
+            const array<double, 6> cAbilityValues = {
+                1.0 * card.AttackValue / divisor, // Breakthrough
+                1.8 * card.AttackValue / divisor, // Charge
+                1.2 * card.AttackValue / divisor, // Drain
+                2.0 * card.DefenseValue / divisor, // Guard
+                1.0, // Lethal
+                2.0 * card.AttackValue / divisor, // Ward
+            };
+            abilityValues = cAbilityValues;
         }
-        //nonboard penalty
-        if(card.Type == CardType::RedItem ||
-            card.Type == CardType::BlueItem)
+        else if(card.Type == CardType::GreenItem)
         {
-            value -= 1;
+            const array<double, 6> cAbilityValues = {
+                1.0 + card.AttackValue, // Breakthrough
+                2.0 + card.AttackValue, // Charge
+                1.2 + card.AttackValue, // Drain
+                2.0 + card.DefenseValue, // Guard
+                1.0, // Lethal
+                1.5 * card.AttackValue, // Ward
+            };
+            abilityValues = cAbilityValues;
         }
+        else // red, blue items
+        {
+            const array<double, 6> cAbilityValues = {
+                1.0, // Breakthrough
+                0.0, // Charge
+                1.2 + card.AttackValue, // Drain
+                2.0 + card.DefenseValue, // Guard
+                1.0, // Lethal
+                1.5 + card.DefenseValue, // Ward
+            };
+            abilityValues = cAbilityValues;
+        }
+        
+        const int abilities = (int)card.Abilities;
+        for(size_t i = 0; i < abilityValues.size(); i++)
+        {
+            value += abilityValues[i] * ((abilities >> i) & 0x01);
+        }
+
         //balance penalty, nerf card "Decimate"
         if(card.CardNumber == 151)
         {
-            value -= 94;
+            value -= 92;
         }
-        if(HaveEnoughInManaCurve(card.Cost, curve))
+        if(card.Type == CardType::Creature)
         {
-            value -= 1;
+            value += ManaCurveAdjust(card, curve);
         }
 
         return value;
     }
 
-    void CurveAdd(int cost, int curve[])
-    {
-        int place = clamp(cost - 1, 0, 6);
-        curve[place] -= 1;
-    }
     /// <summary>
     /// Represent a turn in the draft phase, 
     /// basically selects the card that we should pick
     /// </summary>
-    string GetBestCard(const array<Card, 8>& picks, int curve[])
+    string GetBestCard(const array<Card, 8>& picks, array<int, 8>& curve)
     {
         const int possiblePickCount = 3;
         double maxValue = -10000;
@@ -745,13 +780,15 @@ namespace DraftPhase
         for(int i = 0; i < possiblePickCount; i++)
         {
             double cardValue = GetValue(picks[i], curve);
+            cerr << "card " << i << " value: " << cardValue << endl;
             if(cardValue >= maxValue)
             {
                 maxValue = cardValue;
                 bestPickIndex = i;
             }
         }
-        CurveAdd(picks[bestPickIndex].Cost, curve);
+        if(picks[bestPickIndex].Type == CardType::Creature)
+            CurveAdd(picks[bestPickIndex].Cost, curve);
         stringstream ss;
         ss << "PICK " << bestPickIndex;
         return ss.str();
@@ -890,7 +927,7 @@ namespace BattlePhase
                 for(auto i = 0; i < gs.MyBoardCount; i++)
                 {
                     auto& c = gs.MyBoard[i];
-                    if(c.DidAttack)
+                    if(c.GetDidAttack() || c.GetJustSummoned())
                         continue;
                     result.emplace_back(GameActionFactory::CreatureAttack(c.InstanceId, GameAction::EnemyPlayerId));
                     
@@ -906,7 +943,7 @@ namespace BattlePhase
                 for(auto i = 0; i < gs.MyBoardCount; i++)
                 {
                     auto& c = gs.MyBoard[i];
-                    if(c.DidAttack)
+                    if(c.GetDidAttack() || c.GetJustSummoned())
                         continue;                 
                     for(auto j = 0; j < gs.EnemyBoardCount; j++)
                     {
@@ -936,8 +973,7 @@ namespace BattlePhase
                         result.emplace_back(GameActionFactory::UseItem(c.InstanceId, b.InstanceId));
                     }
                 }
-                else if(c.Type == CardType::RedItem || 
-                    c.Type == CardType::BlueItem && c.DefenseValue != 0)
+                else if(c.Type == CardType::RedItem)
                 {
                     for(auto j = 0; j < gs.EnemyBoardCount; j++)
                     {
@@ -948,6 +984,14 @@ namespace BattlePhase
                 else if(c.Type == CardType::BlueItem)
                 {
                     result.emplace_back(GameActionFactory::UseItem(c.InstanceId, GameAction::EnemyPlayerId));
+                    if(c.DefenseValue != 0)
+                    {
+                        for(auto j = 0; j < gs.EnemyBoardCount; j++)
+                        {
+                            auto& b = gs.EnemyBoard[j];
+                            result.emplace_back(GameActionFactory::UseItem(c.InstanceId, b.InstanceId));
+                        }
+                    }
                 }
             }
 
@@ -1036,9 +1080,6 @@ struct Parse
             case BoardLocation::PlayerSide:
                 gs.AddCardToMyBoard(card);
                 break;
-            case BoardLocation::PlayerSidePassive:
-                gs.AddCardToPassiveCards(card);
-                break;
         }
     }
 
@@ -1083,13 +1124,15 @@ struct Parse
 
 }
 
+
+    array<int, 8> curve = { 2, 6, 7, 7, 4, 2, 2, 1 };
+
 int mainReal()
 {
     int turn = 0;
 
     const int draftTurnCount = 30;
     const int lastTurn = draftTurnCount + 50;
-    int curve[] = { 2, 8, 7, 5, 4, 2, 2 };
 
     // game loop
     while(true)
@@ -1305,7 +1348,7 @@ GraphSolver Chosen action has index: 3826097, has value: 17 , is ATTACK 7 -1;ATT
 				"18 6 -1 0 4 7 4 ------ 0 0 0"
 */
 
-int mainTest()
+void mainTest()
 {
 	cerr << "CardSize: " << sizeof(CCG::Card) << endl;
 
@@ -1333,14 +1376,39 @@ int mainTest()
 
         cerr << "Turn took " << sw.ElapsedMilliseconds() << " ms" << endl;
     }
-    return 0;
+}
+
+void mainTestDraft()
+{
+	cerr << "CardSize: " << sizeof(CCG::Card) << endl;
+
+    CCG::Stopwatch sw;
+    // game loop
+    //while (true)
+    {
+        sw.Restart();
+        CCG::GameState gs = CCG::Parse::GameState(std::queue<string>({
+			"30 0 9 25", "30 0 10 25", "0", "3",
+            "-120 -1 0 1 0 1 1 ------ 0 0 0",
+            "109 -1 0 0 5 5 6 ------ 0 0 0",
+            "75 -1 0 0 5 6 5 B----- 0 0 0"
+            }));
+        
+        CCG::printError(gs.ToString());
+
+        cout << CCG::DraftPhase::GetBestCard(gs.MyHand, curve) << endl;
+
+        cerr << "Turn took " << sw.ElapsedMilliseconds() << " ms" << endl;
+    }
 }
 
 int main()
 {
 #if defined(CCGDeveloper)
     mainTest();
+    //mainTestDraft();
 #else
     mainReal();
 #endif
+    return 0;
 }
