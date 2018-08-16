@@ -581,7 +581,6 @@ namespace Simulator
             char defenderHpBefore = defender.DefenseValue;
             AttackCreature(attacker, defender);
             Drain(state.MyPlayer, attacker, max(0, defenderHpBefore - max(static_cast<char>(0), defender.DefenseValue)));
-            Drain(state.EnemyPlayer, defender, attackerHpBefore - max(static_cast<char>(0), attacker.DefenseValue));
             if(attacker.DefenseValue <= 0)
             {
                 state.RemoveCardFromMyBoard(attIndex);
@@ -874,7 +873,10 @@ namespace BattlePhase
                 const double value = EvaluateGameState(gs);
                 if(value > bestValue)
                 {
-                    // cerr << "GraphSolver NEW best value found: " << value << " with action " << toState.ToString() << endl;
+#ifdef CCGDeveloper
+                    cerr << "GraphSolver NEW best value found: " << value << " with action " << toState.ToString() << endl;
+                    PrintEvaluateGameState(gs);
+#endif
                     bestSeq = toState;
                     bestValue = value;
                     bestCounter = counter;
@@ -898,11 +900,13 @@ namespace BattlePhase
                 //    cerr << "GraphSolver elapsed time: " << sw.ElapsedMilliseconds << " ms";
                 //}
 
+#ifndef CCGDeveloper
                 if(sw.ElapsedMilliseconds() > timeout)
                 {
                     printError("GraphSolver took to much time, breaking out");
                     break;
                 }
+#endif
             }
 
             auto elapsed = sw.ElapsedMilliseconds();
@@ -1006,8 +1010,7 @@ namespace BattlePhase
         {
             // TODO: Better evaluation function
             // An evaluation function is the hardest and most important part of an AI
-            double result = 0.0;
-
+            
             const auto damageGatherer = [](const double s, auto& c) { return s + (double)c.AttackValue;};
             const auto hpGatherer = [](const double s, auto& c) { 
                 double guardDef = c.HasGuard() ? c.DefenseValue : 0.0;
@@ -1028,7 +1031,7 @@ namespace BattlePhase
             double myHp = gs.MyPlayer.Health + std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, hpGatherer);
             double enemyTurnsToWin = myHp / enemyPotential;
 
-            result = enemyTurnsToWin - myTurnsToWin;
+            double result = enemyTurnsToWin - myTurnsToWin;
 
 
             /*result += gs.MyPlayer.Health;
@@ -1044,6 +1047,52 @@ namespace BattlePhase
             result += std::accumulate(gs.MyBoard.begin(), gs.MyBoard.begin()+gs.MyBoardCount, 0.0, valueGatherer);
             result -= std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoard.begin()+gs.EnemyBoardCount, 0.0, valueGatherer);*/
             return result;
+        }
+        
+
+        static void PrintEvaluateGameState(const GameState& gs)
+        {
+            // TODO: Better evaluation function
+            // An evaluation function is the hardest and most important part of an AI
+            const auto damageGatherer = [](const double s, auto& c) { return s + (double)c.AttackValue;};
+            const auto hpGatherer = [](const double s, auto& c) { 
+                double guardDef = c.HasGuard() ? c.DefenseValue : 0.0;
+                double wardCoeff = c.HasWard() ? 2.0 : 1.0;
+                return s + guardDef*wardCoeff;
+            };
+
+
+            double myDamage = std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, damageGatherer);
+            double myCards = gs.MyHandCount;
+            double myPotential = fmax(0.5, myDamage+myCards);
+            double enemyHp = gs.EnemyPlayer.Health + std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoardEnd(), 0.0, hpGatherer);
+            double myTurnsToWin = enemyHp / myPotential;
+            
+            double enemyDamage = std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoardEnd(), 0.0, damageGatherer);
+            double enemyCards = gs.EnemyHandCount;
+            double enemyPotential = fmax(0.5, enemyDamage+enemyCards);
+            double myHp = gs.MyPlayer.Health + std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, hpGatherer);
+            double enemyTurnsToWin = myHp / enemyPotential;
+
+            double result = enemyTurnsToWin - myTurnsToWin;
+
+            cerr << "****GameState evaluate****" << endl;
+            cerr << "myDamage: " << myDamage << endl;
+            cerr << "myCards: " << myCards << endl;
+            cerr << "myPotential: " << myPotential << endl;
+            cerr << "enemyHp: " << enemyHp << endl;
+            cerr << "myTurnsToWin: " << myTurnsToWin << endl;
+            
+            cerr << "--------------" << endl;
+            
+            cerr << "enemyDamage: " << enemyDamage << endl;
+            cerr << "enemyCards: " << enemyCards << endl;
+            cerr << "enemyPotential: " << enemyPotential << endl;
+            cerr << "myHp: " << myHp << endl;
+            cerr << "enemyTurnsToWin: " << enemyTurnsToWin << endl;
+            
+            cerr << "result: " << result << endl << endl;
+
         }
     };
 }
