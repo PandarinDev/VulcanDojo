@@ -11,6 +11,7 @@
 #include <memory>
 #include <stdexcept>
 #include <cstring>
+#include <cmath>
 
 using namespace std;
 
@@ -441,7 +442,6 @@ struct GameState
     char MyHandCount = 0;
     char MyBoardCount = 0;
     char EnemyBoardCount = 0;
-    char PassiveCardsCount = 0;
     
     GameState() = default;
     GameState(const GameState&) = default;
@@ -505,6 +505,10 @@ struct GameState
 		*it = arr[counter];
 		memset(arr.data() + counter, 0, sizeof(Card));
 	}
+
+    auto MyHandEnd() const { return MyHand.begin()+MyHandCount; }
+    auto MyBoardEnd() const { return MyBoard.begin()+MyBoardCount; }
+    auto EnemyBoardEnd() const { return EnemyBoard.begin()+EnemyBoardCount; }
 };
 
 class Stopwatch
@@ -691,18 +695,18 @@ namespace DraftPhase
 {
     void CurveAdd(int cost, array<int, 8>& curve)
     {
-        int place = clamp(cost - 1, 0, 7);
+        int place = clamp(cost, 0, 7);
         curve[place] -= 1;
     }
 
     double ManaCurveAdjust(const Card& card, array<int, 8>& curve)
     {
-        int place = clamp(card.Cost - 1, 0, 7);
+        int place = clamp((int)card.Cost, 0, 7);
         auto needInCurve = curve[place];
         return needInCurve;
     }
     
-    double GetValue(const Card& card, array<int, 8>& curve)
+    double GetValue(const GameState& gs, const Card& card, array<int, 8>& curve)
     {
         //TODO: improve red and blue item values
         double value = 0.0;
@@ -715,11 +719,11 @@ namespace DraftPhase
         if(card.Type == CardType::Creature)
         {
             const array<double, 6> cAbilityValues = {
-                1.0 * card.AttackValue / divisor, // Breakthrough
-                1.8 * card.AttackValue / divisor, // Charge
+                -0.2 * card.AttackValue / divisor, // Breakthrough
+                1.6 * card.AttackValue / divisor, // Charge
                 1.2 * card.AttackValue / divisor, // Drain
                 2.0 * card.DefenseValue / divisor, // Guard
-                1.0, // Lethal
+                1.0 * card.DefenseValue / divisor, // Lethal
                 2.0 * card.AttackValue / divisor, // Ward
             };
             abilityValues = cAbilityValues;
@@ -732,7 +736,7 @@ namespace DraftPhase
                 1.2 + card.AttackValue, // Drain
                 2.0 + card.DefenseValue, // Guard
                 1.0, // Lethal
-                1.5 * card.AttackValue, // Ward
+                1.0 + 1.5 * card.AttackValue, // Ward
             };
             abilityValues = cAbilityValues;
         }
@@ -760,7 +764,7 @@ namespace DraftPhase
         {
             value -= 92;
         }
-        if(card.Type == CardType::Creature)
+        if(card.Type == CardType::Creature && gs.MyPlayer.DeckSize > 10)
         {
             value += ManaCurveAdjust(card, curve);
         }
@@ -772,14 +776,14 @@ namespace DraftPhase
     /// Represent a turn in the draft phase, 
     /// basically selects the card that we should pick
     /// </summary>
-    string GetBestCard(const array<Card, 8>& picks, array<int, 8>& curve)
+    string GetBestCard(const GameState& gs, const array<Card, 8>& picks, array<int, 8>& curve)
     {
         const int possiblePickCount = 3;
         double maxValue = -10000;
         int bestPickIndex = 0;
         for(int i = 0; i < possiblePickCount; i++)
         {
-            double cardValue = GetValue(picks[i], curve);
+            double cardValue = GetValue(gs, picks[i], curve);
             cerr << "card " << i << " value: " << cardValue << endl;
             if(cardValue >= maxValue)
             {
@@ -962,7 +966,7 @@ namespace BattlePhase
 
                 if(c.Type == CardType::Creature)
                 {
-                    if(gs.MyBoardCount + gs.PassiveCardsCount < 6)
+                    if(gs.MyBoardCount < 6)
                         result.emplace_back(GameActionFactory::SummonCreature(c.InstanceId));
                 }
                 else if(c.Type == CardType::GreenItem)
@@ -1003,10 +1007,34 @@ namespace BattlePhase
             // TODO: Better evaluation function
             // An evaluation function is the hardest and most important part of an AI
             double result = 0.0;
-            result += gs.MyPlayer.Health;
+
+            const auto damageGatherer = [](const double s, auto& c) { return s + (double)c.AttackValue;};
+            const auto hpGatherer = [](const double s, auto& c) { 
+                double guardDef = c.HasGuard() ? c.DefenseValue : 0.0;
+                double wardCoeff = c.HasWard() ? 2.0 : 1.0;
+                return s + guardDef*wardCoeff;
+            };
+
+
+            double myDamage = std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, damageGatherer);
+            double myCards = gs.MyHandCount;
+            double myPotential = fmax(0.5, myDamage+myCards);
+            double enemyHp = gs.EnemyPlayer.Health + std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoardEnd(), 0.0, hpGatherer);
+            double myTurnsToWin = enemyHp / myPotential;
+            
+            double enemyDamage = std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoardEnd(), 0.0, damageGatherer);
+            double enemyCards = gs.EnemyHandCount;
+            double enemyPotential = fmax(0.5, enemyDamage+enemyCards);
+            double myHp = gs.MyPlayer.Health + std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, hpGatherer);
+            double enemyTurnsToWin = myHp / enemyPotential;
+
+            result = enemyTurnsToWin - myTurnsToWin;
+
+
+            /*result += gs.MyPlayer.Health;
             result -= gs.EnemyPlayer.Health;
             result += gs.MyBoardCount;
-            result += gs.PassiveCardsCount;
+
             const auto valueGatherer = [](const double s, auto c)
             {
 				const double hp = (double)c.AttackValue + (double)c.DefenseValue;
@@ -1014,7 +1042,7 @@ namespace BattlePhase
 				return s + hp + guard;
             };
             result += std::accumulate(gs.MyBoard.begin(), gs.MyBoard.begin()+gs.MyBoardCount, 0.0, valueGatherer);
-            result -= std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoard.begin()+gs.EnemyBoardCount, 0.0, valueGatherer);
+            result -= std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoard.begin()+gs.EnemyBoardCount, 0.0, valueGatherer);*/
             return result;
         }
     };
@@ -1125,36 +1153,6 @@ struct Parse
 }
 
 
-    array<int, 8> curve = { 2, 6, 7, 7, 4, 2, 2, 1 };
-
-int mainReal()
-{
-    int turn = 0;
-
-    const int draftTurnCount = 30;
-    const int lastTurn = draftTurnCount + 50;
-
-    // game loop
-    while(true)
-    {
-        CCG::GameState gs = CCG::Parse::GameStateFromConsole();
-        cerr << gs.ToString() << endl;
-
-        if(turn < lastTurn)
-        {
-            ++turn;
-        }
-
-        if(turn <= draftTurnCount)
-        {
-            cout << CCG::DraftPhase::GetBestCard(gs.MyHand, curve) << endl;
-        }
-        else
-        {
-            cout << CCG::BattlePhase::GraphSolver::ProcessTurn(gs, 95) << endl;
-        }
-    }
-}
 
 
 /*
@@ -1321,31 +1319,71 @@ GraphSolver finished in 14491 ms with 5854966 nodes
 GraphSolver Chosen action has index: 3826097, has value: 17 , is ATTACK 7 -1;ATTACK 15 28;ATTACK 3 20;ATTACK 19 28;SUMMON 23;SUMMON 27;SUMMON 29
 
 
-///////////// gives different result in debug and release(debug is right one)
-30 5 21 25
-23 4 20 20
-6
-9
-15 1 0 0 4 4 5 ------ 0 0 0
--105 5 0 2 5 0 -99 BCDGLW 0 0 0
-12 11 0 0 3 2 5 ------ 0 0 0
-4 17 0 0 2 1 5 ------ 0 0 0
-8 9 1 0 2 2 3 ------ 0 0 0
-47 13 1 0 2 1 5 --D--- 0 0 0
-27 15 1 0 2 2 2 ------ 2 0 0
-47 10 -1 0 2 1 3 --D--- 0 0 0
-18 6 -1 0 4 7 4 ------ 0 0 0
-				
-				"30 5 21 25", "23 4 20 20", "6", "9",
-				"15 1 0 0 4 4 5 ------ 0 0 0",
-				"-105 5 0 2 5 0 -99 BCDGLW 0 0 0",
-				"12 11 0 0 3 2 5 ------ 0 0 0",
-				"4 17 0 0 2 1 5 ------ 0 0 0",
-				"8 9 1 0 2 2 3 ------ 0 0 0",
-				"47 13 1 0 2 1 5 --D--- 0 0 0",
-				"27 15 1 0 2 2 2 ------ 2 0 0",
-				"47 10 -1 0 2 1 3 --D--- 0 0 0",
-				"18 6 -1 0 4 7 4 ------ 0 0 0"
+14 7 15 10
+15 7 16 10
+5
+17
+27 8 0 0 2 2 2 ------ 2 0 0
+116 16 0 0 12 8 8 BCDGLW 0 0 0
+7 20 0 0 2 2 2 -----W 0 0 0
+116 22 0 0 12 8 8 BCDGLW 0 0 0
+41 24 0 0 3 2 2 -CD--- 0 0 0
+72 26 0 0 4 5 3 B----- 0 0 0
+26 28 0 0 2 3 2 ------ 0 -1 0
+19 30 0 0 5 5 6 ------ 0 0 0
+50 10 1 0 3 3 2 ----L- 0 0 0
+26 18 1 0 2 3 2 ------ 0 0 0
+37 14 1 0 6 5 7 ------ 0 0 1
+48 13 -1 0 1 1 1 ----L- 0 0 0
+8 17 -1 0 2 2 3 ------ 0 0 0
+72 11 -1 0 4 5 3 B----- 0 0 0
+7 19 -1 0 2 2 2 -----W 0 0 0
+37 5 -1 0 6 5 7 ------ 0 0 1
+39 23 -1 0 1 2 1 --D--- 0 0 0
+
+                "14 7 15 10", "15 7 16 10", "5", "17",
+                "27 8 0 0 2 2 2 ------ 2 0 0",
+                "116 16 0 0 12 8 8 BCDGLW 0 0 0",
+                "7 20 0 0 2 2 2 -----W 0 0 0",
+                "116 22 0 0 12 8 8 BCDGLW 0 0 0",
+                "41 24 0 0 3 2 2 -CD--- 0 0 0",
+                "72 26 0 0 4 5 3 B----- 0 0 0",
+                "26 28 0 0 2 3 2 ------ 0 -1 0",
+                "19 30 0 0 5 5 6 ------ 0 0 0",
+                "50 10 1 0 3 3 2 ----L- 0 0 0",
+                "26 18 1 0 2 3 2 ------ 0 0 0",
+                "37 14 1 0 6 5 7 ------ 0 0 1",
+                "48 13 -1 0 1 1 1 ----L- 0 0 0",
+                "8 17 -1 0 2 2 3 ------ 0 0 0",
+                "72 11 -1 0 4 5 3 B----- 0 0 0",
+                "7 19 -1 0 2 2 2 -----W 0 0 0",
+                "37 5 -1 0 6 5 7 ------ 0 0 1",
+                "39 23 -1 0 1 2 1 --D--- 0 0 0",
+
+
+/////////////////////// ATTACK 22 43;ATTACK 40 -1 starting wouls be strictly better
+30 12 5 0
+13 12 6 0
+3
+7
+72 44 0 0 4 5 3 B----- 0 0 0
+19 46 0 0 5 5 6 ------ 0 0 0
+47 48 0 0 2 1 5 --D--- 0 0 0
+117 50 0 1 1 1 1 B----- 0 0 0
+9 40 1 0 3 3 1 ------ 0 0 0
+116 22 1 0 12 8 8 BCDGLW 0 0 0
+116 43 -1 0 12 8 8 BCDGL- 0 0 0
+
+                "30 12 5 0", "13 12 6 0", "3", "7",
+                "72 44 0 0 4 5 3 B----- 0 0 0",
+                "19 46 0 0 5 5 6 ------ 0 0 0",
+                "47 48 0 0 2 1 5 --D--- 0 0 0",
+                "117 50 0 1 1 1 1 B----- 0 0 0",
+                "9 40 1 0 3 3 1 ------ 0 0 0",
+                "116 22 1 0 12 8 8 BCDGLW 0 0 0",
+                "116 43 -1 0 12 8 8 BCDGL- 0 0 0"
+
+
 */
 
 void mainTest()
@@ -1358,25 +1396,25 @@ void mainTest()
     {
         sw.Restart();
         CCG::GameState gs = CCG::Parse::GameState(std::queue<string>({
-			"30 5 21 25", "23 4 20 20", "6", "9",
-			"15 1 0 0 4 4 5 ------ 0 0 0",
-			"-105 5 0 2 5 0 -99 BCDGLW 0 0 0",
-			"12 11 0 0 3 2 5 ------ 0 0 0",
-			"4 17 0 0 2 1 5 ------ 0 0 0",
-			"8 9 1 0 2 2 3 ------ 0 0 0",
-			"47 13 1 0 2 1 5 --D--- 0 0 0",
-			"27 15 1 0 2 2 2 ------ 2 0 0",
-			"47 10 -1 0 2 1 3 --D--- 0 0 0",
-			"18 6 -1 0 4 7 4 ------ 0 0 0"
+                "30 12 5 0", "13 12 6 0", "3", "7",
+                "72 44 0 0 4 5 3 B----- 0 0 0",
+                "19 46 0 0 5 5 6 ------ 0 0 0",
+                "47 48 0 0 2 1 5 --D--- 0 0 0",
+                "117 50 0 1 1 1 1 B----- 0 0 0",
+                "9 40 1 0 3 3 1 ------ 0 0 0",
+                "116 22 1 0 12 8 8 BCDGLW 0 0 0",
+                "116 43 -1 0 12 8 8 BCDGL- 0 0 0"
             }));
         
         CCG::printError(gs.ToString());
 
-        cout << CCG::BattlePhase::GraphSolver::ProcessTurn(gs, 950) << endl;
+        cout << CCG::BattlePhase::GraphSolver::ProcessTurn(gs, 95) << endl;
 
         cerr << "Turn took " << sw.ElapsedMilliseconds() << " ms" << endl;
     }
 }
+
+array<int, 8> curve = { 2, 3, 6, 5, 4, 3, 2, 2 };
 
 void mainTestDraft()
 {
@@ -1388,25 +1426,54 @@ void mainTestDraft()
     {
         sw.Restart();
         CCG::GameState gs = CCG::Parse::GameState(std::queue<string>({
-			"30 0 9 25", "30 0 10 25", "0", "3",
-            "-120 -1 0 1 0 1 1 ------ 0 0 0",
-            "109 -1 0 0 5 5 6 ------ 0 0 0",
-            "75 -1 0 0 5 6 5 B----- 0 0 0"
+			"30 0 3 25", "30 0 4 25", "0", "3",
+            "71 -1 0 0 4 3 2 BC---- 0 0 0",
+            "-117 -1 0 1 4 0 0 ----LW 0 0 0",
+            "9 -1 0 0 3 3 4 ------ 0 0 0"
             }));
         
         CCG::printError(gs.ToString());
 
-        cout << CCG::DraftPhase::GetBestCard(gs.MyHand, curve) << endl;
+        cout << CCG::DraftPhase::GetBestCard(gs, gs.MyHand, curve) << endl;
 
         cerr << "Turn took " << sw.ElapsedMilliseconds() << " ms" << endl;
+    }
+}
+
+int mainReal()
+{
+    int turn = 0;
+
+    const int draftTurnCount = 30;
+    const int lastTurn = draftTurnCount + 50;
+
+    // game loop
+    while(true)
+    {
+        CCG::GameState gs = CCG::Parse::GameStateFromConsole();
+        cerr << gs.ToString() << endl;
+
+        if(turn < lastTurn)
+        {
+            ++turn;
+        }
+
+        if(turn <= draftTurnCount)
+        {
+            cout << CCG::DraftPhase::GetBestCard(gs, gs.MyHand, curve) << endl;
+        }
+        else
+        {
+            cout << CCG::BattlePhase::GraphSolver::ProcessTurn(gs, 95) << endl;
+        }
     }
 }
 
 int main()
 {
 #if defined(CCGDeveloper)
+    mainTestDraft();
     mainTest();
-    //mainTestDraft();
 #else
     mainReal();
 #endif
