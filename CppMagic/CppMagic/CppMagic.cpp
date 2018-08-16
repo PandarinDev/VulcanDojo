@@ -10,6 +10,7 @@
 #include <numeric>
 #include <memory>
 #include <stdexcept>
+#include <cstring>
 
 using namespace std;
 
@@ -33,7 +34,7 @@ namespace Utils
     }
 
     template<class T>
-    bool vecEqual(const vector<T> v1, const vector<T> v2)
+    bool vecEqual(const vector<T>& v1, const vector<T>& v2)
     {
         if(v1.size() != v2.size())
             return false;
@@ -47,10 +48,10 @@ namespace Utils
         return true;
     }
 
-    template<class T, int Size>
-    bool arrayEqual(const std::array<T, Size> v1, const std::array<T, Size> v2)
+    template<class T>
+    bool arrayEqual(const T& v1, const T& v2)
     {
-        for(size_t i = 0; i < v1.size(); i++)
+        for(auto i = 0; i < v1.size(); i++)
         {
             if(v1[i] != v2[i])
             {
@@ -65,7 +66,7 @@ namespace Utils
         return c;
     }
 
-    auto join = [](auto collection, auto separator) -> auto
+    auto join = [](const auto& collection, auto separator) -> auto
     {
         stringstream result;
         for(size_t i=0; i < collection.size(); ++i)
@@ -77,7 +78,7 @@ namespace Utils
         return result.str();
     };
 
-    auto joinSize = [](auto collection, auto size, auto separator) -> auto
+    auto joinSize = [](const auto& collection, auto& size, auto separator) -> auto
     {
         stringstream result;
         for(size_t i=0; i < size; ++i)
@@ -90,14 +91,14 @@ namespace Utils
     };
     
     template<class T>
-    string toString(vector<T> cards)
+    string toString(const vector<T>& cards)
     {
         string r = Utils::join(cards, '\n');
         return r;
     }
     
-    template<class T, int S>
-    string toString(array<T, S> cards, char size)
+    template<class T>
+    string toString(const T& cards, char size)
     {
         string r = Utils::joinSize(cards, size, '\n');
         return r;
@@ -107,7 +108,7 @@ namespace Utils
 namespace CCG
 {
 
-enum BoardLocation
+enum class BoardLocation : char
 {
     EnemySide = -1,
     InHand = 0,
@@ -115,7 +116,12 @@ enum BoardLocation
     PlayerSidePassive = 2
 };
 
-enum CardType
+ostream& operator<<(ostream& os, const BoardLocation& t)
+{
+	return os << static_cast<int>(t);
+};
+
+enum class CardType : char
 {
     Creature = 0,
     GreenItem = 1,
@@ -123,7 +129,12 @@ enum CardType
     BlueItem = 3
 };
 
-enum CardAbility
+ostream& operator<<(ostream& os, const CardType& t)
+{
+	return os << static_cast<int>(t);
+};
+
+enum class CardAbility : unsigned char
 {
     Nothing = 0x00,
     Breakthrough = 0x01,
@@ -134,6 +145,33 @@ enum CardAbility
     Ward = 0x20,
     All = 0x3F,
 };
+
+CardAbility operator&(const CardAbility& a, const CardAbility& b)
+{
+	const auto aa = static_cast<underlying_type_t<CardAbility>>(a);
+	const auto ab = static_cast<underlying_type_t<CardAbility>>(b);
+	return static_cast<CardAbility>(aa & ab);
+}
+
+CardAbility operator|(const CardAbility& a, const CardAbility& b)
+{
+	const auto aa = static_cast<underlying_type_t<CardAbility>>(a);
+	const auto ab = static_cast<underlying_type_t<CardAbility>>(b);
+	return static_cast<CardAbility>(aa | ab);
+}
+
+void operator|=(CardAbility& a, const CardAbility& b)
+{
+	const auto aa = static_cast<underlying_type_t<CardAbility>>(a);
+	const auto ab = static_cast<underlying_type_t<CardAbility>>(b);
+	a = static_cast<CardAbility>(aa | ab);
+}
+
+CardAbility operator~(const CardAbility& a)
+{
+	const auto aa = static_cast<underlying_type_t<CardAbility>>(a);
+	return static_cast<CardAbility>(~aa);
+}
 
 struct Card
 {
@@ -173,7 +211,7 @@ struct Card
     void AddLethal() { AddAbility(CardAbility::Lethal);}
     void AddWard() { AddAbility(CardAbility::Ward);}
     void AddAbility(CardAbility a) {
-        Abilities = (CardAbility)(Abilities | a);
+        Abilities = (Abilities | a);
     }
 
     void RemoveBreakthrough() { RemoveAbilty(CardAbility::Breakthrough); }
@@ -183,13 +221,17 @@ struct Card
     void RemoveLethal() { RemoveAbilty(CardAbility::Lethal);}
     void RemoveWard() { RemoveAbilty(CardAbility::Ward);}
     void RemoveAbilty(CardAbility a) {
-        Abilities = (CardAbility)((Abilities & ~a) & CardAbility::All);
+        Abilities = ((Abilities & ~a) & CardAbility::All);
     }
 
     string ToString() const
     {
         stringstream ss;
-        ss << (int)CardNumber << " " << (int)InstanceId << " " << Location << " " << Type << " " << (int)Cost << " " << (int)AttackValue << " " << (int)DefenseValue << " " << AbilitiesToString() << " " << (int)MyHealthChange << " " << (int)EnemyHealthChange << " " << (int)CardDraw;
+		ss << (int)CardNumber << " " << (int)InstanceId << " ";
+		ss << Location << " " << Type << " " << (int)Cost << " ";
+		ss << (int)AttackValue << " " << (int)DefenseValue << " ";
+		ss << AbilitiesToString() << " " << (int)MyHealthChange << " ";
+    	ss << (int)EnemyHealthChange << " " << (int)CardDraw;
         return ss.str();
     }
 
@@ -211,24 +253,7 @@ struct Card
 
     bool operator==(const Card& c) const
     {
-        auto result = CardNumber == c.CardNumber && InstanceId == c.InstanceId &&
-            Location == c.Location && Type == c.Type &&
-            Cost == c.Cost && AttackValue == c.AttackValue &&
-            DefenseValue == c.DefenseValue && Abilities == c.Abilities &&
-            MyHealthChange == c.MyHealthChange && EnemyHealthChange == c.EnemyHealthChange &&
-            CardDraw == c.CardDraw;
-        return result;
-    }
-
-    bool operator==(const Card& c)
-    {
-		auto result = CardNumber == c.CardNumber && InstanceId == c.InstanceId &&
-            Location == c.Location && Type == c.Type &&
-            Cost == c.Cost && AttackValue == c.AttackValue &&
-            DefenseValue == c.DefenseValue && Abilities == c.Abilities &&
-            MyHealthChange == c.MyHealthChange && EnemyHealthChange == c.EnemyHealthChange &&
-            CardDraw == c.CardDraw;
-        return result;
+		return (memcmp(this, &c, sizeof(Card)) == 0);
     }
 
     bool operator!=(const Card& c) const
@@ -421,7 +446,9 @@ struct GameState
             Utils::toString(EnemyBoard, EnemyBoardCount), 
             Utils::toString(PassiveCards, PassiveCardsCount)
         };
-        string cards = Utils::toString(a);
+		vector<string> b;
+		copy_if(a.begin(), a.end(), std::back_inserter(b), [](auto a) {return a != ""; });
+		string cards = Utils::toString(b);
         stringstream ss;
         ss << MyPlayer.ToString() << endl << EnemyPlayer.ToString() << endl << (int)EnemyHandCount << endl << (int)CardCount << endl << cards;
         return ss.str();
@@ -446,8 +473,8 @@ struct GameState
     void AddCardToEnemyBoard(const Card& c) { AddCardToArray(EnemyBoard, EnemyBoardCount, c); }
     void AddCardToPassiveCards(const Card& c) { AddCardToArray(PassiveCards, PassiveCardsCount, c); }
 
-    template<class T, int S>
-    inline static void AddCardToArray(array<T, S>& arr, char& counter, const Card& c)
+    template<class T>
+    inline static void AddCardToArray(T& arr, char& counter, const Card& c)
     {
         arr[counter] = c;
         counter++;
@@ -457,18 +484,13 @@ struct GameState
     void RemoveCardFromMyBoard(const array<Card, 6>::iterator& it) { RemoveCardFromArray(MyBoard, MyBoardCount, it); }
     void RemoveCardFromEnemyBoard(const array<Card, 6>::iterator& it) { RemoveCardFromArray(EnemyBoard, EnemyBoardCount, it); }
     void RemoveCardFromPassiveCards(const array<Card, 6>::iterator& it) { RemoveCardFromArray(PassiveCards, PassiveCardsCount, it); }
-    
-    static void RemoveCardFromArray(array<Card, 6>& arr, char& counter, const array<Card, 6>::iterator& it)
-    {
-        *it = arr[counter];
-        counter--;
-    }
 
-    static void RemoveCardFromArray(array<Card, 8>& arr, char& counter, const array<Card, 8>::iterator& it)
-    {
-        *it = arr[counter];
-        counter--;
-    }
+	template<class T>
+	static void RemoveCardFromArray(T& arr, char& counter, const typename T::iterator& it)
+	{
+		*it = arr[counter];
+		counter--;
+	}
 };
 
 class Stopwatch
@@ -750,7 +772,7 @@ namespace BattlePhase
             throw std::runtime_error("GetAction was called with bad action!");
         }
 
-        size_t size()
+        auto size()
         {
             return pool.size();
         }
@@ -770,8 +792,8 @@ namespace BattlePhase
         {
             double bestValue = -100000000.0;
             ActionSequence bestSeq;
-            auto possibleStates = std::queue<shared_ptr<pair<GameState, ActionSequence>>>();
-            possibleStates.push(make_shared<pair<GameState, ActionSequence>>(initialGameSate, bestSeq));
+            auto possibleStates = std::queue<pair<GameState, ActionSequence>>();
+            possibleStates.emplace(initialGameSate, bestSeq);
             
             Stopwatch sw;
             sw.Restart();
@@ -781,10 +803,10 @@ namespace BattlePhase
             while(!possibleStates.empty())
             {
                 counter++;
-                auto state = possibleStates.front();
+                const auto state = possibleStates.front();
                 possibleStates.pop();
-                const GameState& gs = state->first;
-                const ActionSequence& toState = state->second;
+                const GameState& gs = state.first;
+                const ActionSequence& toState = state.second;
 
                 if(gs.EnemyPlayer.Health <= 0)
                 {
@@ -793,7 +815,7 @@ namespace BattlePhase
                     break;
                 }
 
-                double value = EvaluateGameState(gs);
+                const double value = EvaluateGameState(gs);
                 if(value > bestValue)
                 {
                     //cerr << "GraphSolver NEW best value found: " << value << endl;
@@ -812,7 +834,7 @@ namespace BattlePhase
                     }
                     auto& action = actionPool.GetAction(a);
                     GameState actionGameState = Simulator::SimulateAction(gs, *action);
-                    possibleStates.push(make_shared<pair<GameState, ActionSequence>>(actionGameState, toState.Extended(action)));
+                    possibleStates.emplace(actionGameState, toState.Extended(action));
                 }
 
                 //if (counter % 200 == 0)
@@ -949,29 +971,28 @@ struct Parse
 
     static CardAbility Ability(const string& abilities)
     {
-        auto nothing = CardAbility::Nothing;
-        int result = nothing;
-        auto hasChar = [&](char c) -> bool {
+        const auto nothing = CardAbility::Nothing;
+		auto result = nothing;
+        const auto hasChar = [&](const char c) -> bool {
             return abilities.find(c) != string::npos;
         };
-        result |= (hasChar('B') ? Breakthrough : nothing);
-        result |= (hasChar('C') ? Charge : nothing);
-        result |= (hasChar('D') ? Drain : nothing);
-        result |= (hasChar('G') ? Guard : nothing);
-        result |= (hasChar('L') ? Lethal : nothing);
-        result |= (hasChar('W') ? Ward : nothing);
-        return static_cast<CardAbility>(result);
+        result |= (hasChar('B') ? CardAbility::Breakthrough : nothing);
+        result |= (hasChar('C') ? CardAbility::Charge : nothing);
+        result |= (hasChar('D') ? CardAbility::Drain : nothing);
+        result |= (hasChar('G') ? CardAbility::Guard : nothing);
+        result |= (hasChar('L') ? CardAbility::Lethal : nothing);
+        result |= (hasChar('W') ? CardAbility::Ward : nothing);
+        return result;
     }
 
     static CCG::Card Card(const string& input)
     {
-        //Console.Error.WriteLine("!parse Card: " + input);
         std::vector<std::string> inputs = Utils::split(input, ' ');
         CCG::Card card;
         card.CardNumber = stoi(inputs[0]);
         card.InstanceId = stoi(inputs[1]);
-        card.Location = (BoardLocation)stoi(inputs[2]);
-        card.Type = (CardType)stoi(inputs[3]);
+        card.Location = static_cast<BoardLocation>(stoi(inputs[2]));
+        card.Type = static_cast<CardType>(stoi(inputs[3]));
         card.Cost = stoi(inputs[4]);
         card.AttackValue = stoi(inputs[5]);
         card.DefenseValue = stoi(inputs[6]);
@@ -1009,10 +1030,12 @@ struct Parse
         gs.MyPlayer = Parse::Gambler(line);
         std::getline(std::cin, line);
         gs.EnemyPlayer = Parse::Gambler(line);
-        cin >> gs.EnemyHandCount; cin.ignore();
-        cin >> gs.CardCount; cin.ignore();
-
-        for(int i = 0; i < gs.CardCount; i++)
+		std::getline(std::cin, line);
+        gs.EnemyHandCount = static_cast<char>(stoi(line));
+		std::getline(std::cin, line);
+        gs.CardCount = static_cast<char>(stoi(line));
+		
+        for(auto i = 0; i < gs.CardCount; i++)
         {
             std::getline(std::cin, line);
             CCG::Card card = Parse::Card(line);
@@ -1191,6 +1214,7 @@ int mainTest()
     const int draftTurnCount = 30;
     const int lastTurn = draftTurnCount + 50;
     int curve[] = { 2, 8, 7, 5, 4, 2, 2 };
+	cerr << "CardSize: " << sizeof(CCG::Card) << endl;
 
     CCG::Stopwatch sw;
     // game loop
@@ -1198,22 +1222,22 @@ int mainTest()
     {
         sw.Restart();
         CCG::GameState gs = CCG::Parse::GameState(std::queue<string>({
-                "23 9 15 20", "23 8 16 20", "5", "15",
-                "23 1 0 0 7 8 8 ------ 0 0 0",
-                "77 11 0 0 7 7 7 B----- 0 0 0",
-                "114 13 0 0 7 7 7 ---G-- 0 0 0",
-                "74 21 0 0 5 5 4 B--G-- 0 0 0",
-                "69 23 0 0 3 4 4 B----- 0 0 0",
-                "63 27 0 0 2 0 4 ---G-W 0 0 0",
-                "99 29 0 0 3 2 5 ---G-- 0 0 0",
-                "86 7 1 0 3 1 5 -C---- 0 0 0",
-                "1 15 1 0 1 2 1 ------ 0 0 0",
-                "37 3 1 0 6 5 5 ------ 0 0 0",
-                "75 19 1 0 5 7 6 B----- 0 0 0",
-                "58 22 -1 0 6 5 6 B----- 0 0 0",
-                "69 4 -1 0 3 4 4 B----- 0 0 0",
-                "75 28 -1 0 5 6 5 B----- 0 0 0",
-                "69 20 -1 0 3 4 4 B----- 0 0 0"
+			"9 7 16 5", "33 7 19 25", "4", "15",
+			"75 10 0 0 5 6 5 B----- 0 0 0",
+			"50 14 0 0 3 3 2 ----L- 0 0 0",
+			"23 16 0 0 7 8 8 ------ 0 0 0",
+			"100 20 0 0 3 1 6 ---G-- 0 0 0",
+			"99 22 0 0 3 2 5 ---G-- 0 0 0",
+			"99 24 0 0 3 2 5 ---G-- 0 0 0",
+			"93 26 0 0 1 2 1 ---G-- 0 0 0",
+			"75 28 0 0 5 6 5 B----- 0 0 0",
+			"17 4 1 0 4 4 3 ------ 0 0 0",
+			"10 6 1 0 3 3 1 --D--- 0 0 0",
+			"69 8 1 0 3 4 4 B----- 0 0 0",
+			"69 3 -1 0 3 4 1 B----- 0 0 0",
+			"1 17 -1 0 1 2 1 ------ 0 0 0",
+			"76 1 -1 0 6 5 5 B-D--- 0 0 0",
+			"45 9 -1 0 6 6 5 B-D--- -3 0 0"
             }));
         
         CCG::printError(gs.ToString());
