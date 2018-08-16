@@ -436,7 +436,12 @@ struct GameState
     GameState() = default;
     GameState(const GameState&) = default;
     GameState(GameState&&) = default;
-    GameState& operator=(const GameState&) = default;
+	GameState& operator=(GameState& gs) = default;
+  //  GameState& operator=(GameState& gs)
+  //  {
+		//memcpy(this, reinterpret_cast<void *>(&gs), sizeof(GameState));
+		//return *this;
+  //  }
 
     string ToString() const
     {
@@ -488,8 +493,11 @@ struct GameState
 	template<class T>
 	static void RemoveCardFromArray(T& arr, char& counter, const typename T::iterator& it)
 	{
-		*it = arr[counter];
+		if (counter <= 0)
+			return;
 		counter--;
+		*it = arr[counter];
+		memset(arr.data() + counter, 0, sizeof(Card));
 	}
 };
 
@@ -1233,11 +1241,6 @@ GraphSolver Chosen action has index: 3826097, has value: 17 , is ATTACK 7 -1;ATT
 
 int mainTest()
 {
-    int turn = 0;
-
-    const int draftTurnCount = 30;
-    const int lastTurn = draftTurnCount + 50;
-    int curve[] = { 2, 8, 7, 5, 4, 2, 2 };
 	cerr << "CardSize: " << sizeof(CCG::Card) << endl;
 
     CCG::Stopwatch sw;
@@ -1246,20 +1249,27 @@ int mainTest()
     {
         sw.Restart();
         CCG::GameState gs = CCG::Parse::GameState(std::queue<string>({
-			"32 4 22 25", "31 3 22 25", "6", "8",
-			"18 1 0 0 4 7 4 ------ 0 0 0",
-			"11 3 0 0 3 5 2 ------ 0 0 0",
-			"47 5 0 0 2 1 5 --D--- 0 0 0",
-			"15 9 0 0 4 4 5 ------ 0 0 0",
-			"99 11 0 0 3 2 5 ---G-- 0 0 0",
-			"73 13 0 0 4 4 4 B----- 4 0 0",
-			"3 15 0 0 1 2 2 ------ 0 0 0",
-			"41 14 -1 0 3 3 1 -CD--- 0 0 0"
+			"23 9 15 20", "23 8 16 20", "5", "15",
+			"23 1 0 0 7 8 8 ------ 0 0 0",
+			"77 11 0 0 7 7 7 B----- 0 0 0",
+			"114 13 0 0 7 7 7 ---G-- 0 0 0",
+			"74 21 0 0 5 5 4 B--G-- 0 0 0",
+			"69 23 0 0 3 4 4 B----- 0 0 0",
+			"63 27 0 0 2 0 4 ---G-W 0 0 0",
+			"99 29 0 0 3 2 5 ---G-- 0 0 0",
+			"86 7 1 0 3 1 5 -C---- 0 0 0",
+			"1 15 1 0 1 2 1 ------ 0 0 0",
+			"37 3 1 0 6 5 5 ------ 0 0 0",
+			"75 19 1 0 5 7 6 B----- 0 0 0",
+			"58 22 -1 0 6 5 6 B----- 0 0 0",
+			"69 4 -1 0 3 4 4 B----- 0 0 0",
+			"75 28 -1 0 5 6 5 B----- 0 0 0",
+			"69 20 -1 0 3 4 4 B----- 0 0 0"
             }));
         
         CCG::printError(gs.ToString());
 
-        cout << CCG::BattlePhase::GraphSolver::ProcessTurn(gs, 95000) << endl;
+        cout << CCG::BattlePhase::GraphSolver::ProcessTurn(gs, 9500) << endl;
 
         cerr << "Turn took " << sw.ElapsedMilliseconds() << " ms" << endl;
     }
