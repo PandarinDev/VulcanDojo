@@ -946,8 +946,8 @@ namespace BattlePhase
             double result = 0.0;
             result += gs.MyPlayer.Health;
             result -= gs.EnemyPlayer.Health;
-            result += gs.MyBoard.size();
-            result += gs.PassiveCards.size();
+            result += gs.MyBoardCount;
+            result += gs.PassiveCardsCount;
             auto valueGatherer = [](double s, auto c) {return s + (double)c.AttackValue + (double)c.DefenseValue;};
             result += std::accumulate(gs.MyBoard.begin(), gs.MyBoard.begin()+gs.MyBoardCount, 0.0, valueGatherer);
             result -= std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoard.begin()+gs.EnemyBoardCount, 0.0, valueGatherer);
@@ -1159,6 +1159,30 @@ int mainReal()
                 "3 8 -1 0 1 2 2 ------ 0 0 0",
                 "27 4 -1 0 2 2 2 ------ 2 0 0"
 
+// PASS ing here?
+32 4 22 25
+31 3 22 25
+6
+8
+18 1 0 0 4 7 4 ------ 0 0 0
+11 3 0 0 3 5 2 ------ 0 0 0
+47 5 0 0 2 1 5 --D--- 0 0 0
+15 9 0 0 4 4 5 ------ 0 0 0
+99 11 0 0 3 2 5 ---G-- 0 0 0
+73 13 0 0 4 4 4 B----- 4 0 0
+3 15 0 0 1 2 2 ------ 0 0 0
+41 14 -1 0 3 3 1 -CD--- 0 0 0
+
+				"32 4 22 25", "31 3 22 25", "6", "8",
+				"18 1 0 0 4 7 4 ------ 0 0 0",
+				"11 3 0 0 3 5 2 ------ 0 0 0",
+				"47 5 0 0 2 1 5 --D--- 0 0 0",
+				"15 9 0 0 4 4 5 ------ 0 0 0",
+				"99 11 0 0 3 2 5 ---G-- 0 0 0",
+				"73 13 0 0 4 4 4 B----- 4 0 0",
+				"3 15 0 0 1 2 2 ------ 0 0 0",
+				"41 14 -1 0 3 3 1 -CD--- 0 0 0"
+
 //////////////// Timeout test
 23 9 15 20
 23 8 16 20
@@ -1222,22 +1246,15 @@ int mainTest()
     {
         sw.Restart();
         CCG::GameState gs = CCG::Parse::GameState(std::queue<string>({
-			"9 7 16 5", "33 7 19 25", "4", "15",
-			"75 10 0 0 5 6 5 B----- 0 0 0",
-			"50 14 0 0 3 3 2 ----L- 0 0 0",
-			"23 16 0 0 7 8 8 ------ 0 0 0",
-			"100 20 0 0 3 1 6 ---G-- 0 0 0",
-			"99 22 0 0 3 2 5 ---G-- 0 0 0",
-			"99 24 0 0 3 2 5 ---G-- 0 0 0",
-			"93 26 0 0 1 2 1 ---G-- 0 0 0",
-			"75 28 0 0 5 6 5 B----- 0 0 0",
-			"17 4 1 0 4 4 3 ------ 0 0 0",
-			"10 6 1 0 3 3 1 --D--- 0 0 0",
-			"69 8 1 0 3 4 4 B----- 0 0 0",
-			"69 3 -1 0 3 4 1 B----- 0 0 0",
-			"1 17 -1 0 1 2 1 ------ 0 0 0",
-			"76 1 -1 0 6 5 5 B-D--- 0 0 0",
-			"45 9 -1 0 6 6 5 B-D--- -3 0 0"
+			"32 4 22 25", "31 3 22 25", "6", "8",
+			"18 1 0 0 4 7 4 ------ 0 0 0",
+			"11 3 0 0 3 5 2 ------ 0 0 0",
+			"47 5 0 0 2 1 5 --D--- 0 0 0",
+			"15 9 0 0 4 4 5 ------ 0 0 0",
+			"99 11 0 0 3 2 5 ---G-- 0 0 0",
+			"73 13 0 0 4 4 4 B----- 4 0 0",
+			"3 15 0 0 1 2 2 ------ 0 0 0",
+			"41 14 -1 0 3 3 1 -CD--- 0 0 0"
             }));
         
         CCG::printError(gs.ToString());
