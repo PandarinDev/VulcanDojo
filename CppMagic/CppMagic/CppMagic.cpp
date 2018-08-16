@@ -850,11 +850,11 @@ namespace BattlePhase
                 //    cerr << "GraphSolver elapsed time: " << sw.ElapsedMilliseconds << " ms";
                 //}
 
-                /*if(sw.ElapsedMilliseconds() > timeout)
+                if(sw.ElapsedMilliseconds() > timeout)
                 {
                     printError("GraphSolver took to much time, breaking out");
                     break;
-                }*/
+                }
             }
 
             auto elapsed = sw.ElapsedMilliseconds();
@@ -1262,7 +1262,6 @@ int mainReal()
                 "75 28 -1 0 5 6 5 B----- 0 0 0",
                 "69 20 -1 0 3 4 4 B----- 0 0 0"
 
-
 Server:
 GraphSolver finished in 91 ms with 1310 nodes
 GraphSolver Chosen action has index: 696, has value: 11 , is ATTACK 7 -1;ATTACK 3 -1;ATTACK 19 -1
@@ -1270,6 +1269,33 @@ GraphSolver Chosen action has index: 696, has value: 11 , is ATTACK 7 -1;ATTACK 
 Release:
 GraphSolver finished in 14491 ms with 5854966 nodes
 GraphSolver Chosen action has index: 3826097, has value: 17 , is ATTACK 7 -1;ATTACK 15 28;ATTACK 3 20;ATTACK 19 28;SUMMON 23;SUMMON 27;SUMMON 29
+
+
+///////////// gives different result in debug and release(debug is right one)
+30 5 21 25
+23 4 20 20
+6
+9
+15 1 0 0 4 4 5 ------ 0 0 0
+-105 5 0 2 5 0 -99 BCDGLW 0 0 0
+12 11 0 0 3 2 5 ------ 0 0 0
+4 17 0 0 2 1 5 ------ 0 0 0
+8 9 1 0 2 2 3 ------ 0 0 0
+47 13 1 0 2 1 5 --D--- 0 0 0
+27 15 1 0 2 2 2 ------ 2 0 0
+47 10 -1 0 2 1 3 --D--- 0 0 0
+18 6 -1 0 4 7 4 ------ 0 0 0
+				
+				"30 5 21 25", "23 4 20 20", "6", "9",
+				"15 1 0 0 4 4 5 ------ 0 0 0",
+				"-105 5 0 2 5 0 -99 BCDGLW 0 0 0",
+				"12 11 0 0 3 2 5 ------ 0 0 0",
+				"4 17 0 0 2 1 5 ------ 0 0 0",
+				"8 9 1 0 2 2 3 ------ 0 0 0",
+				"47 13 1 0 2 1 5 --D--- 0 0 0",
+				"27 15 1 0 2 2 2 ------ 2 0 0",
+				"47 10 -1 0 2 1 3 --D--- 0 0 0",
+				"18 6 -1 0 4 7 4 ------ 0 0 0"
 */
 
 int mainTest()
@@ -1282,22 +1308,21 @@ int mainTest()
     {
         sw.Restart();
         CCG::GameState gs = CCG::Parse::GameState(std::queue<string>({
-			"29 5 19 25", "28 5 20 25", "6", "10",
-			"79 10 0 0 8 8 8 B----- 0 0 0",
-			"-105 12 0 2 5 0 -99 BCDGLW 0 0 0",
-			"75 14 0 0 5 6 5 B----- 0 0 0",
-			"72 16 0 0 4 5 3 B----- 0 0 0",
-			"99 18 0 0 3 2 5 ---G-- 0 0 0",
-			"73 20 0 0 4 4 4 B----- 4 0 0",
-			"-105 22 0 2 5 0 -99 BCDGLW 0 0 0",
-			"27 4 1 0 2 2 2 ------ 0 0 0",
-			"73 15 -1 0 4 4 2 B----- 0 0 0",
-			"75 9 -1 0 5 6 5 B----- 0 0 0"
+			"30 5 21 25", "23 4 20 20", "6", "9",
+			"15 1 0 0 4 4 5 ------ 0 0 0",
+			"-105 5 0 2 5 0 -99 BCDGLW 0 0 0",
+			"12 11 0 0 3 2 5 ------ 0 0 0",
+			"4 17 0 0 2 1 5 ------ 0 0 0",
+			"8 9 1 0 2 2 3 ------ 0 0 0",
+			"47 13 1 0 2 1 5 --D--- 0 0 0",
+			"27 15 1 0 2 2 2 ------ 2 0 0",
+			"47 10 -1 0 2 1 3 --D--- 0 0 0",
+			"18 6 -1 0 4 7 4 ------ 0 0 0"
             }));
         
         CCG::printError(gs.ToString());
 
-        cout << CCG::BattlePhase::GraphSolver::ProcessTurn(gs, 9500) << endl;
+        cout << CCG::BattlePhase::GraphSolver::ProcessTurn(gs, 95) << endl;
 
         cerr << "Turn took " << sw.ElapsedMilliseconds() << " ms" << endl;
     }
