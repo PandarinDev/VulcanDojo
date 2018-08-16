@@ -1020,13 +1020,13 @@ namespace BattlePhase
 
 
             double myDamage = std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, damageGatherer);
-            double myCards = gs.MyHandCount;
+            double myCards = 0.8*gs.MyHandCount;
             double myPotential = fmax(0.5, myDamage+myCards);
             double enemyHp = gs.EnemyPlayer.Health + std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoardEnd(), 0.0, hpGatherer);
             double myTurnsToWin = enemyHp / myPotential;
             
             double enemyDamage = std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoardEnd(), 0.0, damageGatherer);
-            double enemyCards = gs.EnemyHandCount;
+            double enemyCards = 0.8*gs.EnemyHandCount;
             double enemyPotential = fmax(0.5, enemyDamage+enemyCards);
             double myHp = gs.MyPlayer.Health + std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, hpGatherer);
             double enemyTurnsToWin = myHp / enemyPotential;
@@ -1063,13 +1063,13 @@ namespace BattlePhase
 
 
             double myDamage = std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, damageGatherer);
-            double myCards = gs.MyHandCount;
+            double myCards = 0.8*gs.MyHandCount;
             double myPotential = fmax(0.5, myDamage+myCards);
             double enemyHp = gs.EnemyPlayer.Health + std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoardEnd(), 0.0, hpGatherer);
             double myTurnsToWin = enemyHp / myPotential;
             
             double enemyDamage = std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoardEnd(), 0.0, damageGatherer);
-            double enemyCards = gs.EnemyHandCount;
+            double enemyCards = 0.8*gs.EnemyHandCount;
             double enemyPotential = fmax(0.5, enemyDamage+enemyCards);
             double myHp = gs.MyPlayer.Health + std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, hpGatherer);
             double enemyTurnsToWin = myHp / enemyPotential;
@@ -1445,6 +1445,7 @@ void mainTest()
     {
         sw.Restart();
         CCG::GameState gs = CCG::Parse::GameState(std::queue<string>({
+            // TODO: Dont suicide creatures if not needed. 
                 "30 12 5 0", "13 12 6 0", "3", "7",
                 "72 44 0 0 4 5 3 B----- 0 0 0",
                 "19 46 0 0 5 5 6 ------ 0 0 0",
