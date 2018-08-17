@@ -342,14 +342,14 @@ struct GameAction
     }
 };
 
-string toString(const shared_ptr<GameAction>& a)
+string toString(const GameAction& a)
 {
-    return a->ToString();
+    return a.ToString();
 }
 
 struct ActionSequence
 {
-    vector<shared_ptr<GameAction>> Actions;
+    vector<GameAction> Actions;
 
     string ToString() const
     {
@@ -361,14 +361,14 @@ struct ActionSequence
     ActionSequence(const ActionSequence&) = default;
     ActionSequence& operator=(const ActionSequence&) = default;
 
-    ActionSequence Extended(const shared_ptr<GameAction>& a) const
+    ActionSequence Extended(const GameAction& a) const
     {
         ActionSequence copy(*this);
         copy.Add(a);
         return copy;
     }
 
-    void Add(const shared_ptr<GameAction>& a)
+    void Add(const GameAction& a)
     {
         Actions.emplace_back(a);
     }
@@ -709,21 +709,22 @@ namespace DraftPhase
     {
         //TODO: improve red and blue item values
         double value = 0.0;
-        double divisor = max((int)card.Cost, 1);
-        value += (double)(abs(card.AttackValue) + abs(card.DefenseValue)) / divisor;
-        value += (double)(card.MyHealthChange - card.EnemyHealthChange) / divisor;
+        const double divisor = max((int)card.Cost, 1);
+		const double stats = (double)(fabs(card.AttackValue) + fabs(card.DefenseValue)) / divisor;
+        const double hpChange = (double)(card.MyHealthChange - card.EnemyHealthChange) / divisor;
+		value += stats + hpChange;
         value += card.CardDraw;
        
         array<double, 6> abilityValues;
         if(card.Type == CardType::Creature)
         {
             const array<double, 6> cAbilityValues = {
-                -0.2 * card.AttackValue / divisor, // Breakthrough
-                1.6 * card.AttackValue / divisor, // Charge
-                1.2 * card.AttackValue / divisor, // Drain
-                2.0 * card.DefenseValue / divisor, // Guard
-                1.0 * card.DefenseValue / divisor, // Lethal
-                2.0 * card.AttackValue / divisor, // Ward
+                0.5 * stats, // Breakthrough
+                1.4 * stats, // Charge
+                1.1 * stats, // Drain
+                1.5 * stats, // Guard
+                1.0 * stats, // Lethal
+                1.5 * stats, // Ward
             };
             abilityValues = cAbilityValues;
         }
@@ -734,7 +735,7 @@ namespace DraftPhase
                 2.0 + card.AttackValue, // Charge
                 1.2 + card.AttackValue, // Drain
                 2.0 + card.DefenseValue, // Guard
-                1.0, // Lethal
+                1.0 + card.DefenseValue, // Lethal
                 1.0 + 1.5 * card.AttackValue, // Ward
             };
             abilityValues = cAbilityValues;
@@ -744,10 +745,10 @@ namespace DraftPhase
             const array<double, 6> cAbilityValues = {
                 1.0, // Breakthrough
                 0.0, // Charge
-                1.2 + card.AttackValue, // Drain
-                2.0 + card.DefenseValue, // Guard
+                1.2 + fabs(card.AttackValue), // Drain
+                2.0 + fabs(card.DefenseValue), // Guard
                 1.0, // Lethal
-                1.5 + card.DefenseValue, // Ward
+                1.5 + fabs(card.DefenseValue), // Ward
             };
             abilityValues = cAbilityValues;
         }
@@ -837,13 +838,12 @@ namespace BattlePhase
     {
         static string ProcessTurn(const GameState& gs, long timeout)
         {
-            ActionPool pool;
-            ActionSequence seq = DecideOnBestActionSequence(gs, pool, timeout);
+            ActionSequence seq = DecideOnBestActionSequence(gs, timeout);
             return seq.ToString();
         }
 
         static ActionSequence DecideOnBestActionSequence(const GameState& initialGameSate, 
-            ActionPool& actionPool, long timeout)
+            long timeout)
         {
             double bestValue = -100000000.0;
             ActionSequence bestSeq;
@@ -873,7 +873,7 @@ namespace BattlePhase
                 const double value = EvaluateGameState(gs);
                 if(value > bestValue)
                 {
-#ifdef CCGDeveloper
+#ifdef CCGDeveloper0
                     cerr << "GraphSolver NEW best value found: " << value << " with action " << toState.ToString() << endl;
                     PrintEvaluateGameState(gs);
 #endif
@@ -886,13 +886,8 @@ namespace BattlePhase
 
                 for(auto& a : actions)
                 {
-                    if(!actionPool.HasAction(a))
-                    {
-                        actionPool.Register(a);
-                    }
-                    auto& action = actionPool.GetAction(a);
-                    GameState actionGameState = Simulator::SimulateAction(gs, *action);
-                    possibleStates.emplace(actionGameState, toState.Extended(action));
+                    GameState actionGameState = Simulator::SimulateAction(gs, a);
+                    possibleStates.emplace(actionGameState, toState.Extended(a));
                 }
 
                 //if (counter % 200 == 0)
@@ -900,7 +895,7 @@ namespace BattlePhase
                 //    cerr << "GraphSolver elapsed time: " << sw.ElapsedMilliseconds << " ms";
                 //}
 
-#ifndef CCGDeveloper
+#ifndef CCGDeveloper0
                 if(sw.ElapsedMilliseconds() > timeout)
                 {
                     printError("GraphSolver took to much time, breaking out");
@@ -911,8 +906,7 @@ namespace BattlePhase
 
             auto elapsed = sw.ElapsedMilliseconds();
             cerr << "GraphSolver finished in " << elapsed << " ms with " << counter << " nodes" << endl;
-            cerr << "GraphSolver Chosen action has index: " << bestCounter << ", has value: " << bestValue << " , is " << bestSeq.ToString() << endl ;
-            cerr << "GraphSolver action pool size: " << actionPool.size() << endl;
+            cerr << "GraphSolver Chosen action has index: " << bestCounter << ", has value: " << bestValue << " , is " << bestSeq.ToString() << endl;
             return bestSeq;
         }
 
@@ -1031,8 +1025,7 @@ namespace BattlePhase
             double myHp = gs.MyPlayer.Health + std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, hpGatherer);
             double enemyTurnsToWin = myHp / enemyPotential;
 
-            double result = enemyTurnsToWin - myTurnsToWin;
-
+            double result = enemyTurnsToWin / myTurnsToWin;
 
             /*result += gs.MyPlayer.Health;
             result -= gs.EnemyPlayer.Health;
@@ -1432,7 +1425,38 @@ GraphSolver Chosen action has index: 3826097, has value: 17 , is ATTACK 7 -1;ATT
                 "116 22 1 0 12 8 8 BCDGLW 0 0 0",
                 "116 43 -1 0 12 8 8 BCDGL- 0 0 0"
 
+// timeout
+43 12 10 20
+19 11 10 15
+4
+11
+34 7 0 0 5 3 5 ------ 0 0 1
+116 13 0 0 12 8 8 BCDGLW 0 0 0
+44 27 0 0 6 3 7 --D-L- 0 0 0
+42 37 0 0 4 4 2 --D--- 0 0 0
+-105 39 0 2 5 0 -99 BCDGLW 0 0 0
+76 31 1 0 6 5 2 B-D--- 0 0 0
+82 1 1 0 7 5 5 B-D--- 0 0 0
+40 35 1 0 3 2 3 --DG-- 0 0 0
+42 33 1 0 4 4 2 --D--- 0 0 0
+21 36 -1 0 5 6 5 ------ 0 0 0
+16 40 -1 0 4 6 2 ------ 0 0 0
 
+				"43 12 10 20",
+				"19 11 10 15",
+				"4",
+				"11",
+				"34 7 0 0 5 3 5 ------ 0 0 1",
+				"116 13 0 0 12 8 8 BCDGLW 0 0 0",
+				"44 27 0 0 6 3 7 --D-L- 0 0 0",
+				"42 37 0 0 4 4 2 --D--- 0 0 0",
+				"-105 39 0 2 5 0 -99 BCDGLW 0 0 0",
+				"76 31 1 0 6 5 2 B-D--- 0 0 0",
+				"82 1 1 0 7 5 5 B-D--- 0 0 0",
+				"40 35 1 0 3 2 3 --DG-- 0 0 0",
+				"42 33 1 0 4 4 2 --D--- 0 0 0",
+				"21 36 -1 0 5 6 5 ------ 0 0 0",
+				"16 40 -1 0 4 6 2 ------ 0 0 0"
 */
 
 void mainTest()
@@ -1445,20 +1469,26 @@ void mainTest()
     {
         sw.Restart();
         CCG::GameState gs = CCG::Parse::GameState(std::queue<string>({
-            // TODO: Dont suicide creatures if not needed. 
-                "30 12 5 0", "13 12 6 0", "3", "7",
-                "72 44 0 0 4 5 3 B----- 0 0 0",
-                "19 46 0 0 5 5 6 ------ 0 0 0",
-                "47 48 0 0 2 1 5 --D--- 0 0 0",
-                "117 50 0 1 1 1 1 B----- 0 0 0",
-                "9 40 1 0 3 3 1 ------ 0 0 0",
-                "116 22 1 0 12 8 8 BCDGLW 0 0 0",
-                "116 43 -1 0 12 8 8 BCDGL- 0 0 0"
+			"43 12 10 20",
+			"19 11 10 15",
+			"4",
+			"11",
+			"34 7 0 0 5 3 5 ------ 0 0 1",
+			"116 13 0 0 12 8 8 BCDGLW 0 0 0",
+			"44 27 0 0 6 3 7 --D-L- 0 0 0",
+			"42 37 0 0 4 4 2 --D--- 0 0 0",
+			"-105 39 0 2 5 0 -99 BCDGLW 0 0 0",
+			"76 31 1 0 6 5 2 B-D--- 0 0 0",
+			"82 1 1 0 7 5 5 B-D--- 0 0 0",
+			"40 35 1 0 3 2 3 --DG-- 0 0 0",
+			"42 33 1 0 4 4 2 --D--- 0 0 0",
+			"21 36 -1 0 5 6 5 ------ 0 0 0",
+			"16 40 -1 0 4 6 2 ------ 0 0 0"
             }));
         
         CCG::printError(gs.ToString());
 
-        cout << CCG::BattlePhase::GraphSolver::ProcessTurn(gs, 95) << endl;
+        cout << CCG::BattlePhase::GraphSolver::ProcessTurn(gs, 9500) << endl;
 
         cerr << "Turn took " << sw.ElapsedMilliseconds() << " ms" << endl;
     }
@@ -1514,7 +1544,7 @@ int mainReal()
         }
         else
         {
-            cout << CCG::BattlePhase::GraphSolver::ProcessTurn(gs, 95) << endl;
+            cout << CCG::BattlePhase::GraphSolver::ProcessTurn(gs, 92) << endl;
         }
     }
 }
