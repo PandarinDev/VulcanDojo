@@ -2,11 +2,13 @@
 #include <cmath>
 #include <string>
 #include <vector>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <stdexcept>
 #include <algorithm>
 #include <type_traits>
+#include <unordered_map>
 
 // Type definitions
 
@@ -184,9 +186,9 @@ struct Card {
 			playedThisTurn, alreadyAttacked);
 	}
 
-	Card flagPlayedThisTurn() const {
+	Card play() const {
 		return Card(
-			number, instanceId, location, type, cost, attack, defense,
+			number, instanceId, CardLocation::MY_SIDE, type, cost, attack, defense,
 			abilities, myHealthChange, opponentHealthChange, cardDraw,
 			true, alreadyAttacked
 		);
@@ -303,7 +305,7 @@ struct SummonAction final : public Action {
 
 	GameState getResult(const GameState& state) const override {
 		std::vector<Card> copiedCards(state.cards);
-		swap_card(copiedCards, card, card.flagPlayedThisTurn());
+		swap_card(copiedCards, card, card.play());
 		return GameState(state.me.spendMana(card.cost), state.opponent, state.opponentHand, state.cardCount, std::move(copiedCards));
 	}
 
@@ -659,7 +661,7 @@ float calculate_curve_value(const Card& card) {
 };
 
 float sum_ability_value(const Card& card) {
-	std::vector<CardAbility> possibleAbilities = {
+	static const std::vector<CardAbility> possibleAbilities = {
 		CardAbility::BREAKTHROUGH, CardAbility::CHARGE, CardAbility::DRAIN,
 		CardAbility::GUARD, CardAbility::GUARD, CardAbility::WARD
 	};
@@ -672,16 +674,18 @@ float sum_ability_value(const Card& card) {
 	return value;
 };
 
-float calculate_draft_value(const Card& card) {
+float calculate_value(const Card& card) {
 	float attack = std::abs(card.attack) * ATTACK_FACTOR;
 	float defense = std::abs(card.defense) * DEFENSE_FACTOR;
 	float myHealth = card.myHealthChange * PLAYER_HP_FACTOR;
 	float opponentHealth = card.opponentHealthChange * OPPONENT_HP_FACTOR;
 	float cardDraw = card.cardDraw * CARD_DRAW_FACTOR;
 	float abilities = sum_ability_value(card);
-	float value = attack + defense + myHealth + opponentHealth + cardDraw + abilities;
-	value *= calculate_curve_value(card);
-	return value;
+	return attack + defense + myHealth + opponentHealth + cardDraw + abilities;
+}
+
+float calculate_draft_value(const Card& card) {
+	return calculate_value(card) * calculate_curve_value(card);
 };
 
 std::vector<std::unique_ptr<Action>> collect_possible_actions(const GameState& state) {
@@ -757,6 +761,68 @@ std::vector<std::unique_ptr<Action>> collect_possible_actions(const GameState& s
 	return possibleActions;
 }
 
+float evaluate_game_state(const GameState& state) {
+	float value = 0.0f;
+	value += state.me.health;
+	value -= state.opponent.health;
+	for (const auto& card : state.cards) {
+		switch (card.location) {
+		case CardLocation::MY_SIDE:
+			value += calculate_value(card);
+			break;
+		case CardLocation::OPPONENT_SIDE:
+			value -= calculate_value(card);
+			break;
+		}
+	}
+	return value;
+}
+
+struct GameStateNode {
+	
+	using ChildrenContainer = std::unordered_map<std::unique_ptr<Action>, std::unique_ptr<GameStateNode>>;
+
+	float value;
+	ChildrenContainer children;
+
+	GameStateNode(float value, ChildrenContainer&& children)
+		: value(value), children(std::move(children)) {}
+
+};
+
+std::unique_ptr<GameStateNode> calculate_tree_children(const GameState& state) {
+	auto possibleActions = collect_possible_actions(state);
+	if (possibleActions.empty()) {
+		// std::cerr << "End of branch" << std::endl;
+		return std::make_unique<GameStateNode>(evaluate_game_state(state), GameStateNode::ChildrenContainer());
+	}
+	GameStateNode::ChildrenContainer children;
+	for (auto& action : possibleActions) {
+		GameState resultingState = action->getResult(state);
+		// std::cerr << "Inserting action " << action->getCommand() << " with value " << evaluate_game_state(resultingState) << " into tree." << std::endl;
+		children.emplace(
+			std::piecewise_construct,
+			std::forward_as_tuple(std::move(action)),
+			std::forward_as_tuple(calculate_tree_children(resultingState)));
+	}
+	// std::cerr << "End of branch" << std::endl;
+	return std::make_unique<GameStateNode>(evaluate_game_state(state), std::move(children));
+}
+
+std::pair<float, std::vector<Action*>> max_sequence(const GameStateNode& node, const std::vector<Action*>& actions) {
+	std::pair<float, std::vector<Action*>> maxValueSequence(node.value, actions);
+	for (const auto& entry : node.children) {
+		std::vector<Action*> stepsToChildren(actions);
+		stepsToChildren.emplace_back(entry.first.get());
+		auto maxChildSequence = max_sequence(*entry.second, stepsToChildren);
+		if (maxChildSequence.first > maxValueSequence.first) {
+			maxValueSequence = maxChildSequence;
+		}
+	}
+	// std::cerr << "Max value: " << maxValueSequence.first << std::endl;
+	return maxValueSequence;
+}
+
 void play_drafting_turn(const GameState& state) {
 	auto bestCardIt = max(state.cards, [](const auto& c1, const auto& c2) {
 		return calculate_draft_value(c1) < calculate_draft_value(c2);
@@ -767,20 +833,18 @@ void play_drafting_turn(const GameState& state) {
 void play_real_turn(const GameState& state) {
 	GameState currentState(state);
 	std::string actionBuffer;
-	auto possibleActions = collect_possible_actions(currentState);
-	while (!possibleActions.empty()) {
+	auto rootNode = calculate_tree_children(state);
+	auto maxSequence = max_sequence(*rootNode, {});
+	for (auto action : maxSequence.second) {
 		if (!actionBuffer.empty()) {
 			actionBuffer += ";";
 		}
-		actionBuffer += possibleActions.at(0)->getCommand();
-		currentState = possibleActions.at(0)->getResult(currentState);
-		possibleActions = collect_possible_actions(currentState);
+		actionBuffer += action->getCommand();
 	}
 
 	if (actionBuffer.empty()) {
 		actionBuffer = "PASS";
 	}
-
 	std::cout << actionBuffer << std::endl;
 }
 
