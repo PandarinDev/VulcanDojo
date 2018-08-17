@@ -871,6 +871,9 @@ namespace BattlePhase
                 }
 
                 const double value = EvaluateGameState(gs);
+#ifdef CCGDeveloper
+				PrintEvaluateGameState(gs);
+#endif
                 if(value > bestValue)
                 {
 #ifdef CCGDeveloper0
@@ -1012,33 +1015,19 @@ namespace BattlePhase
                 return s + guardDef*wardCoeff;
             };
 
-
             double myDamage = std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, damageGatherer);
-            double myCards = 0.8*gs.MyHandCount;
+            double myCards = 0.7*gs.MyHandCount + 0.8*gs.MyBoardCount;
             double myPotential = fmax(0.5, myDamage+myCards);
             double enemyHp = gs.EnemyPlayer.Health + std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoardEnd(), 0.0, hpGatherer);
             double myTurnsToWin = enemyHp / myPotential;
             
             double enemyDamage = std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoardEnd(), 0.0, damageGatherer);
-            double enemyCards = 0.8*gs.EnemyHandCount;
+            double enemyCards = 0.7*gs.EnemyHandCount + 0.8*gs.EnemyBoardCount;
             double enemyPotential = fmax(0.5, enemyDamage+enemyCards);
             double myHp = gs.MyPlayer.Health + std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, hpGatherer);
             double enemyTurnsToWin = myHp / enemyPotential;
 
             double result = enemyTurnsToWin / myTurnsToWin;
-
-            /*result += gs.MyPlayer.Health;
-            result -= gs.EnemyPlayer.Health;
-            result += gs.MyBoardCount;
-
-            const auto valueGatherer = [](const double s, auto c)
-            {
-				const double hp = (double)c.AttackValue + (double)c.DefenseValue;
-				const double guard = c.HasGuard() ? (double)c.DefenseValue : 0.0;
-				return s + hp + guard;
-            };
-            result += std::accumulate(gs.MyBoard.begin(), gs.MyBoard.begin()+gs.MyBoardCount, 0.0, valueGatherer);
-            result -= std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoard.begin()+gs.EnemyBoardCount, 0.0, valueGatherer);*/
             return result;
         }
         
@@ -1054,20 +1043,19 @@ namespace BattlePhase
                 return s + guardDef*wardCoeff;
             };
 
-
             double myDamage = std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, damageGatherer);
-            double myCards = 0.8*gs.MyHandCount;
+            double myCards = 0.7*gs.MyHandCount + 0.8*gs.MyBoardCount;
             double myPotential = fmax(0.5, myDamage+myCards);
             double enemyHp = gs.EnemyPlayer.Health + std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoardEnd(), 0.0, hpGatherer);
             double myTurnsToWin = enemyHp / myPotential;
             
             double enemyDamage = std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoardEnd(), 0.0, damageGatherer);
-            double enemyCards = 0.8*gs.EnemyHandCount;
+            double enemyCards = 0.7*gs.EnemyHandCount + 0.8*gs.EnemyBoardCount;
             double enemyPotential = fmax(0.5, enemyDamage+enemyCards);
             double myHp = gs.MyPlayer.Health + std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, hpGatherer);
             double enemyTurnsToWin = myHp / enemyPotential;
 
-            double result = enemyTurnsToWin - myTurnsToWin;
+            double result = enemyTurnsToWin / myTurnsToWin;
 
             cerr << "****GameState evaluate****" << endl;
             cerr << "myDamage: " << myDamage << endl;
@@ -1404,17 +1392,6 @@ GraphSolver Chosen action has index: 3826097, has value: 17 , is ATTACK 7 -1;ATT
 
 
 /////////////////////// ATTACK 22 43;ATTACK 40 -1 starting wouls be strictly better
-30 12 5 0
-13 12 6 0
-3
-7
-72 44 0 0 4 5 3 B----- 0 0 0
-19 46 0 0 5 5 6 ------ 0 0 0
-47 48 0 0 2 1 5 --D--- 0 0 0
-117 50 0 1 1 1 1 B----- 0 0 0
-9 40 1 0 3 3 1 ------ 0 0 0
-116 22 1 0 12 8 8 BCDGLW 0 0 0
-116 43 -1 0 12 8 8 BCDGL- 0 0 0
 
                 "30 12 5 0", "13 12 6 0", "3", "7",
                 "72 44 0 0 4 5 3 B----- 0 0 0",
@@ -1426,21 +1403,6 @@ GraphSolver Chosen action has index: 3826097, has value: 17 , is ATTACK 7 -1;ATT
                 "116 43 -1 0 12 8 8 BCDGL- 0 0 0"
 
 // timeout
-43 12 10 20
-19 11 10 15
-4
-11
-34 7 0 0 5 3 5 ------ 0 0 1
-116 13 0 0 12 8 8 BCDGLW 0 0 0
-44 27 0 0 6 3 7 --D-L- 0 0 0
-42 37 0 0 4 4 2 --D--- 0 0 0
--105 39 0 2 5 0 -99 BCDGLW 0 0 0
-76 31 1 0 6 5 2 B-D--- 0 0 0
-82 1 1 0 7 5 5 B-D--- 0 0 0
-40 35 1 0 3 2 3 --DG-- 0 0 0
-42 33 1 0 4 4 2 --D--- 0 0 0
-21 36 -1 0 5 6 5 ------ 0 0 0
-16 40 -1 0 4 6 2 ------ 0 0 0
 
 				"43 12 10 20",
 				"19 11 10 15",
@@ -1457,6 +1419,17 @@ GraphSolver Chosen action has index: 3826097, has value: 17 , is ATTACK 7 -1;ATT
 				"42 33 1 0 4 4 2 --D--- 0 0 0",
 				"21 36 -1 0 5 6 5 ------ 0 0 0",
 				"16 40 -1 0 4 6 2 ------ 0 0 0"
+
+/// play 0 damage card
+					"30 1 25 25",
+					"30 0 25 25",
+					"5",
+					"5",
+					"116 1 0 0 12 8 8 BCDGLW 0 0 0",
+					"86 3 0 0 3 1 5 -C---- 0 0 0",
+					"92 5 0 0 1 0 1 ---G-- 2 0 0",
+					"-105 7 0 2 5 0 -99 BCDGLW 0 0 0",
+					"27 9 0 0 2 2 2 ------ 2 0 0"
 */
 
 void mainTest()
@@ -1469,21 +1442,15 @@ void mainTest()
     {
         sw.Restart();
         CCG::GameState gs = CCG::Parse::GameState(std::queue<string>({
-			"43 12 10 20",
-			"19 11 10 15",
-			"4",
-			"11",
-			"34 7 0 0 5 3 5 ------ 0 0 1",
-			"116 13 0 0 12 8 8 BCDGLW 0 0 0",
-			"44 27 0 0 6 3 7 --D-L- 0 0 0",
-			"42 37 0 0 4 4 2 --D--- 0 0 0",
-			"-105 39 0 2 5 0 -99 BCDGLW 0 0 0",
-			"76 31 1 0 6 5 2 B-D--- 0 0 0",
-			"82 1 1 0 7 5 5 B-D--- 0 0 0",
-			"40 35 1 0 3 2 3 --DG-- 0 0 0",
-			"42 33 1 0 4 4 2 --D--- 0 0 0",
-			"21 36 -1 0 5 6 5 ------ 0 0 0",
-			"16 40 -1 0 4 6 2 ------ 0 0 0"
+			"30 1 25 25",
+			"30 0 25 25",
+			"5",
+			"5",
+			"116 1 0 0 12 8 8 BCDGLW 0 0 0",
+			"86 3 0 0 3 1 5 -C---- 0 0 0",
+			"92 5 0 0 1 0 1 ---G-- 2 0 0",
+			"-105 7 0 2 5 0 -99 BCDGLW 0 0 0",
+			"27 9 0 0 2 2 2 ------ 2 0 0"
             }));
         
         CCG::printError(gs.ToString());
