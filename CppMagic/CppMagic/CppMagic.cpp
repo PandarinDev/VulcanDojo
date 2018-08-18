@@ -555,7 +555,6 @@ namespace Simulator
             else
                 defender.DefenseValue -= attacker.AttackValue;
         }
-        attacker.SetDidAttack(true);
     }
 
     void AttackCreature(Card& attacker, Card& defender)
@@ -580,6 +579,7 @@ namespace Simulator
             char attackerHpBefore = attacker.DefenseValue;
             char defenderHpBefore = defender.DefenseValue;
             AttackCreature(attacker, defender);
+			attacker.SetDidAttack(true);
             Drain(state.MyPlayer, attacker, max(0, defenderHpBefore - max(static_cast<char>(0), defender.DefenseValue)));
             if(attacker.DefenseValue <= 0)
             {
@@ -1450,23 +1450,14 @@ void mainTest()
     {
         sw.Restart();
         CCG::GameState gs = CCG::Parse::GameState(std::queue<string>({
-			"13 9 12 10", "20 9 14 15",
-			"2", "15",
-			"62 14 0 0 12 12 12 B--G-- 0 0 0",
-			"76 16 0 0 6 5 5 B-D--- 0 0 0",
-			"15 26 0 0 4 4 5 ------ 0 0 0",
-			"47 30 0 0 2 1 5 --D--- 0 0 0",
-			"96 32 0 0 2 3 2 ---G-- 0 0 0",
-			"65 34 0 0 2 2 2 -----W 0 0 0",
-			"74 36 0 0 5 5 4 B--G-- 0 0 0",
-			"45 2 1 0 6 6 5 B-D--- 0 0 0",
-			"13 20 1 0 4 5 3 ------ 1 -1 0",
-			"65 13 -1 0 2 2 3 ------ 0 0 0",
-			"20 17 -1 0 5 8 1 ------ 0 0 0",
-			"52 7 -1 0 4 2 1 ----L- 0 0 0",
-			"15 25 -1 0 4 4 5 ------ 0 0 0",
-			"59 31 -1 0 7 7 7 ------ 1 -1 0",
-			"8 27 -1 0 2 2 3 ------ 0 0 0"
+			"34 11 14 25",
+			"28 10 15 25",
+			"0",
+			"4",
+			"98 31 0 0 3 2 4 ---G-- 0 0 0",
+			"88 27 1 0 5 4 1 -C---- 0 0 0",
+			"95 29 1 0 2 2 3 ---G-- 0 0 0",
+			"71 30 -1 0 4 5 3 BC---- 0 0 0"
             }));
         
         CCG::printError(gs.ToString());
