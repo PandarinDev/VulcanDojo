@@ -711,7 +711,7 @@ namespace DraftPhase
         double value = 0.0;
         const double divisor = max((int)card.Cost, 1);
 		const double stats = (double)(fabs(card.AttackValue) + fabs(card.DefenseValue)) / divisor;
-        const double hpChange = (double)(card.MyHealthChange - card.EnemyHealthChange) / divisor;
+        const double hpChange = (double)(card.MyHealthChange - card.EnemyHealthChange) / divisor / 4.0;
 		value += stats + hpChange;
         value += card.CardDraw;
        
@@ -719,12 +719,12 @@ namespace DraftPhase
         if(card.Type == CardType::Creature)
         {
             const array<double, 6> cAbilityValues = {
-                0.5 * stats, // Breakthrough
-                1.4 * stats, // Charge
-                1.1 * stats, // Drain
-                1.5 * stats, // Guard
-                1.0 * stats, // Lethal
-                1.5 * stats, // Ward
+                0.3 * stats, // Breakthrough
+                0.4 * stats, // Charge
+                0.1 * stats, // Drain
+                0.5 * stats, // Guard
+                0.3 * stats, // Lethal
+                0.5 * stats, // Ward
             };
             abilityValues = cAbilityValues;
         }
@@ -753,12 +753,18 @@ namespace DraftPhase
             abilityValues = cAbilityValues;
         }
         
-        const int abilities = (int)card.Abilities;
-        for(size_t i = 0; i < abilityValues.size(); i++)
-        {
-            value += abilityValues[i] * ((abilities >> i) & 0x01);
-        }
-
+		if(card.Abilities == CardAbility::All)
+		{
+			value += 2.0 * stats;
+		}
+		else
+		{
+			const int abilities = (int)card.Abilities;
+			for(size_t i = 0; i < abilityValues.size(); i++)
+			{
+				value += abilityValues[i] * ((abilities >> i) & 0x01);
+			}
+		}
         //balance penalty, nerf card "Decimate"
         if(card.CardNumber == 151)
         {
@@ -871,12 +877,12 @@ namespace BattlePhase
                 }
 
                 const double value = EvaluateGameState(gs);
-#ifdef CCGDeveloper
+#ifdef CCGDeveloper0
 				PrintEvaluateGameState(gs);
 #endif
                 if(value > bestValue)
                 {
-#ifdef CCGDeveloper0
+#ifdef CCGDeveloper
                     cerr << "GraphSolver NEW best value found: " << value << " with action " << toState.ToString() << endl;
                     PrintEvaluateGameState(gs);
 #endif
@@ -898,7 +904,7 @@ namespace BattlePhase
                 //    cerr << "GraphSolver elapsed time: " << sw.ElapsedMilliseconds << " ms";
                 //}
 
-#ifndef CCGDeveloper0
+#ifndef CCGDeveloper
                 if(sw.ElapsedMilliseconds() > timeout)
                 {
                     printError("GraphSolver took to much time, breaking out");
@@ -1015,20 +1021,22 @@ namespace BattlePhase
                 return s + guardDef*wardCoeff;
             };
 
-            double myDamage = std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, damageGatherer);
-            double myCards = 0.7*gs.MyHandCount + 0.8*gs.MyBoardCount;
-            double myPotential = fmax(0.5, myDamage+myCards);
-            double enemyHp = gs.EnemyPlayer.Health + std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoardEnd(), 0.0, hpGatherer);
-            double myTurnsToWin = enemyHp / myPotential;
-            
-            double enemyDamage = std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoardEnd(), 0.0, damageGatherer);
-            double enemyCards = 0.7*gs.EnemyHandCount + 0.8*gs.EnemyBoardCount;
-            double enemyPotential = fmax(0.5, enemyDamage+enemyCards);
-            double myHp = gs.MyPlayer.Health + std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, hpGatherer);
-            double enemyTurnsToWin = myHp / enemyPotential;
+			double myDamage = std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, damageGatherer);
+			double myCards = 0.7*gs.MyHandCount + 0.8*gs.MyBoardCount;
+			double myPotential = fmax(0.5, myDamage + myCards);
+			double enemyHp = gs.EnemyPlayer.Health + std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoardEnd(), 0.0, hpGatherer);
+			double myTurnsToWin = enemyHp / myPotential;
+			myTurnsToWin = max(0.001, myTurnsToWin);
 
-            double result = enemyTurnsToWin / myTurnsToWin;
-            return result;
+			double enemyDamage = std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoardEnd(), 0.0, damageGatherer);
+			double enemyCards = 0.7*gs.EnemyHandCount + 0.8*gs.EnemyBoardCount;
+			double enemyPotential = fmax(0.5, enemyDamage + enemyCards);
+			double myHp = gs.MyPlayer.Health + std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, hpGatherer);
+			double enemyTurnsToWin = (myHp - enemyDamage) / enemyPotential;
+
+			double result = enemyTurnsToWin / myTurnsToWin;
+
+			return result;
         }
         
 
@@ -1043,37 +1051,37 @@ namespace BattlePhase
                 return s + guardDef*wardCoeff;
             };
 
-            double myDamage = std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, damageGatherer);
-            double myCards = 0.7*gs.MyHandCount + 0.8*gs.MyBoardCount;
-            double myPotential = fmax(0.5, myDamage+myCards);
-            double enemyHp = gs.EnemyPlayer.Health + std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoardEnd(), 0.0, hpGatherer);
-            double myTurnsToWin = enemyHp / myPotential;
-            
-            double enemyDamage = std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoardEnd(), 0.0, damageGatherer);
-            double enemyCards = 0.7*gs.EnemyHandCount + 0.8*gs.EnemyBoardCount;
-            double enemyPotential = fmax(0.5, enemyDamage+enemyCards);
-            double myHp = gs.MyPlayer.Health + std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, hpGatherer);
-            double enemyTurnsToWin = myHp / enemyPotential;
+			double myDamage = std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, damageGatherer);
+			double myCards = 0.7*gs.MyHandCount + 0.8*gs.MyBoardCount;
+			double myPotential = fmax(0.5, myDamage + myCards);
+			double enemyHp = gs.EnemyPlayer.Health + std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoardEnd(), 0.0, hpGatherer);
+			double myTurnsToWin = enemyHp / myPotential;
+			myTurnsToWin = max(0.001, myTurnsToWin);
 
-            double result = enemyTurnsToWin / myTurnsToWin;
+			double enemyDamage = std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoardEnd(), 0.0, damageGatherer);
+			double enemyCards = 0.7*gs.EnemyHandCount + 0.8*gs.EnemyBoardCount;
+			double enemyPotential = fmax(0.5, enemyDamage + enemyCards);
+			double myHp = gs.MyPlayer.Health + std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, hpGatherer);
+			double enemyTurnsToWin = (myHp - enemyDamage) / enemyPotential;
 
-            cerr << "****GameState evaluate****" << endl;
-            cerr << "myDamage: " << myDamage << endl;
-            cerr << "myCards: " << myCards << endl;
-            cerr << "myPotential: " << myPotential << endl;
-            cerr << "enemyHp: " << enemyHp << endl;
-            cerr << "myTurnsToWin: " << myTurnsToWin << endl;
-            
-            cerr << "--------------" << endl;
-            
-            cerr << "enemyDamage: " << enemyDamage << endl;
-            cerr << "enemyCards: " << enemyCards << endl;
-            cerr << "enemyPotential: " << enemyPotential << endl;
-            cerr << "myHp: " << myHp << endl;
-            cerr << "enemyTurnsToWin: " << enemyTurnsToWin << endl;
-            
-            cerr << "result: " << result << endl << endl;
+			double result = enemyTurnsToWin / myTurnsToWin;
 
+			cerr << "****GameState evaluate****" << endl;
+			cerr << "myDamage: " << myDamage << endl;
+			cerr << "myCards: " << myCards << endl;
+			cerr << "myPotential: " << myPotential << endl;
+			cerr << "enemyHp: " << enemyHp << endl;
+			cerr << "myTurnsToWin: " << myTurnsToWin << endl;
+
+			cerr << "--------------" << endl;
+
+			cerr << "enemyDamage: " << enemyDamage << endl;
+			cerr << "enemyCards: " << enemyCards << endl;
+			cerr << "enemyPotential: " << enemyPotential << endl;
+			cerr << "myHp: " << myHp << endl;
+			cerr << "enemyTurnsToWin: " << enemyTurnsToWin << endl;
+
+			cerr << "result: " << result << endl << endl;
         }
     };
 }
@@ -1442,15 +1450,23 @@ void mainTest()
     {
         sw.Restart();
         CCG::GameState gs = CCG::Parse::GameState(std::queue<string>({
-			"30 1 25 25",
-			"30 0 25 25",
-			"5",
-			"5",
-			"116 1 0 0 12 8 8 BCDGLW 0 0 0",
-			"86 3 0 0 3 1 5 -C---- 0 0 0",
-			"92 5 0 0 1 0 1 ---G-- 2 0 0",
-			"-105 7 0 2 5 0 -99 BCDGLW 0 0 0",
-			"27 9 0 0 2 2 2 ------ 2 0 0"
+			"13 9 12 10", "20 9 14 15",
+			"2", "15",
+			"62 14 0 0 12 12 12 B--G-- 0 0 0",
+			"76 16 0 0 6 5 5 B-D--- 0 0 0",
+			"15 26 0 0 4 4 5 ------ 0 0 0",
+			"47 30 0 0 2 1 5 --D--- 0 0 0",
+			"96 32 0 0 2 3 2 ---G-- 0 0 0",
+			"65 34 0 0 2 2 2 -----W 0 0 0",
+			"74 36 0 0 5 5 4 B--G-- 0 0 0",
+			"45 2 1 0 6 6 5 B-D--- 0 0 0",
+			"13 20 1 0 4 5 3 ------ 1 -1 0",
+			"65 13 -1 0 2 2 3 ------ 0 0 0",
+			"20 17 -1 0 5 8 1 ------ 0 0 0",
+			"52 7 -1 0 4 2 1 ----L- 0 0 0",
+			"15 25 -1 0 4 4 5 ------ 0 0 0",
+			"59 31 -1 0 7 7 7 ------ 1 -1 0",
+			"8 27 -1 0 2 2 3 ------ 0 0 0"
             }));
         
         CCG::printError(gs.ToString());
