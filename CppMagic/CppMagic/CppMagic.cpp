@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <array>
+#include <tuple>
 #include <queue>
 #include <algorithm>
 #include <utility>
@@ -446,7 +447,7 @@ struct GameState
     GameState() = default;
     GameState(const GameState&) = default;
     GameState(GameState&&) = default;
-	GameState& operator=(GameState& gs) = default;
+	GameState& operator=(const GameState& gs) = default;
   //  GameState& operator=(GameState& gs)
   //  {
 		//memcpy(this, reinterpret_cast<void *>(&gs), sizeof(GameState));
@@ -853,8 +854,13 @@ namespace BattlePhase
         {
             double bestValue = -100000000.0;
             ActionSequence bestSeq;
-            auto possibleStates = std::queue<pair<GameState, ActionSequence>>();
-            possibleStates.emplace(initialGameSate, bestSeq);
+            //auto possibleStates = std::queue<pair<GameState, ActionSequence>>();
+			using Node = tuple<double, GameState, ActionSequence>;
+			auto nodeGreater = []( auto& A, auto& B){
+				return get<0>(A) < get<0>(B);
+			};
+			auto possibleStates = std::priority_queue<Node, vector<Node>, decltype(nodeGreater)>(nodeGreater);
+            possibleStates.emplace(bestValue, initialGameSate, bestSeq);
             
             Stopwatch sw;
             sw.Restart();
@@ -864,10 +870,11 @@ namespace BattlePhase
             while(!possibleStates.empty())
             {
                 counter++;
-                const auto state = possibleStates.front();
+				// const auto& [val, gs, toState] = possibleStates.top();
+				const auto state = possibleStates.top();
+				const GameState& gs = get<1>(state);
+				const ActionSequence& toState = get<2>(state);
                 possibleStates.pop();
-                const GameState& gs = state.first;
-                const ActionSequence& toState = state.second;
 
                 if(gs.EnemyPlayer.Health <= 0)
                 {
@@ -896,7 +903,7 @@ namespace BattlePhase
                 for(auto& a : actions)
                 {
                     GameState actionGameState = Simulator::SimulateAction(gs, a);
-                    possibleStates.emplace(actionGameState, toState.Extended(a));
+                    possibleStates.emplace(value, actionGameState, toState.Extended(a));
                 }
 
                 //if (counter % 200 == 0)
