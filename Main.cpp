@@ -83,16 +83,16 @@ bool has_ability(ubyte abilities, ubyte ability) {
 
 struct Player {
 
-	ubyte health;
+	byte health;
 	ubyte mana;
 	ubyte deck;
 	ubyte runes;
 
-	Player(ubyte health, ubyte mana, ubyte deck, ubyte runes)
+	Player(byte health, ubyte mana, ubyte deck, ubyte runes)
 		: health(health), mana(mana), deck(deck), runes(runes) {}
 
-	Player spendMana(ubyte mana) const {
-		return Player(health, this->mana - mana, deck, runes);
+	void spendMana(ubyte mana) {
+		this->mana -= mana;
 	}
 
 };
@@ -231,7 +231,11 @@ struct GameState {
 	}
 
 	bool isLethal() const {
-		return opponent.health == 0;
+		return opponent.health <= 0;
+	}
+
+	bool hasLost() const {
+		return me.health <= 0;
 	}
 
 };
@@ -281,9 +285,14 @@ struct SummonAction final : public Action {
 	}
 
 	GameState getResult(const GameState& state) const override {
+		Player newMe(state.me);
+		newMe.health += card.myHealthChange;
+		newMe.spendMana(card.cost);
+		Player newOpponent(state.opponent);
+		newOpponent.health += card.opponentHealthChange;
 		std::vector<Card> copiedCards(state.cards);
 		std::find(copiedCards.begin(), copiedCards.end(), card)->play();
-		return GameState(state.me.spendMana(card.cost), state.opponent, state.opponentHand, state.cardCount, std::move(copiedCards));
+		return GameState(newMe, newOpponent, state.opponentHand, state.cardCount, std::move(copiedCards));
 	}
 
 };
@@ -333,6 +342,8 @@ struct UseRedItemAction final : public Action {
 	}
 
 	GameState getResult(const GameState& state) const override {
+		Player newMe(state.me);
+		newMe.spendMana(card.cost);
 		// Damage opponent
 		Player newOpponent(
 			state.opponent.health + card.opponentHealthChange,
@@ -372,7 +383,7 @@ struct UseRedItemAction final : public Action {
 		}
 		// Remove the item from the list of cards
 		copiedCards.erase(std::remove(copiedCards.begin(), copiedCards.end(), card));
-		return GameState(state.me.spendMana(card.cost), newOpponent, state.opponentHand, newCardCount, copiedCards);
+		return GameState(newMe, newOpponent, state.opponentHand, newCardCount, copiedCards);
 	}
 
 };
@@ -540,7 +551,7 @@ Player parse_player() {
 	std::cin >> health >> mana >> deck >> runes;
 	std::cin.ignore();
 	return {
-		static_cast<ubyte>(health),
+		static_cast<byte>(health),
 		static_cast<ubyte>(mana),
 		static_cast<ubyte>(deck),
 		static_cast<ubyte>(runes) };
@@ -679,10 +690,13 @@ std::vector<std::unique_ptr<Action>> collect_possible_actions(const GameState& s
 	}
 
 	// Add summon and use actions
+	bool isBoardFull = (cardsOnMySide.size() == BOARD_SIZE);
 	for (const auto card : playableCards) {
 		switch (card->type) {
 		case CardType::CREATURE:
-			possibleActions.emplace_back(std::make_unique<SummonAction>(*card));
+			if (!isBoardFull) {
+				possibleActions.emplace_back(std::make_unique<SummonAction>(*card));
+			}
 			break;
 		case CardType::GREEN_ITEM:
 			for (const auto& friendlyCreature : cardsOnMySide) {
@@ -726,6 +740,14 @@ std::vector<std::unique_ptr<Action>> collect_possible_actions(const GameState& s
 }
 
 float evaluate_game_state(const GameState& state) {
+	if (state.isLethal()) {
+		// Never miss lethal
+		return std::numeric_limits<float>::max();
+	}
+	if (state.hasLost()) {
+		// Do not kill myself, preferably
+		return std::numeric_limits<float>::lowest();
+	}
 	float value = 0.0f;
 	value += state.me.health;
 	value -= state.opponent.health;
