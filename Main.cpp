@@ -4,7 +4,8 @@
 #include <vector>
 #include <limits>
 #include <memory>
-#include <optional>
+#include <chrono>
+#include <cstdint>
 #include <stdexcept>
 #include <algorithm>
 #include <type_traits>
@@ -12,16 +13,19 @@
 
 // Type definitions
 
-using uchar = unsigned char;
+using byte = std::int8_t;
+using ubyte = std::uint8_t;
 
 // Constants
 
 static constexpr float MATH_PI = 3.14159265358979323846f;
-static constexpr uchar BOARD_SIZE = 6;
-static constexpr uchar HAND_SIZE = 8;
-static constexpr uchar MAX_CARDS = 2 * BOARD_SIZE + HAND_SIZE;
+static constexpr ubyte BOARD_SIZE = 6;
+static constexpr ubyte HAND_SIZE = 8;
+static constexpr ubyte MAX_CARDS = 2 * BOARD_SIZE + HAND_SIZE;
+static constexpr long long MILLIS_PER_TURN = 100;
+static constexpr long long TREE_BUILDING_MAX_MILLIS = MILLIS_PER_TURN - 10;
 static constexpr float CURVE_MEAN = 3.0f;
-static constexpr float CURVE_VARIANCE = 3.0f;
+static constexpr float CURVE_VARIANCE = 1.4f;
 static constexpr float CURVE_VALUE = 5.0f;
 
 // Card stat factors for weighting
@@ -37,7 +41,7 @@ static constexpr float CARD_DRAW_FACTOR = 0.5f;
 static constexpr float BREAKTHROUGH_FACTOR = 0.15f;
 static constexpr float CHARGE_FACTOR = 0.5f;
 static constexpr float DRAIN_FACTOR = 0.075f;
-static constexpr float GUARD_FACTOR = 0.2f;
+static constexpr float GUARD_FACTOR = 0.3f;
 static constexpr float LETHAL_FACTOR = 2.0f;
 static constexpr float WARD_FACTOR = 1.0f;
 
@@ -47,6 +51,11 @@ template<typename T>
 auto enum_value(T e) {
 	return static_cast<std::underlying_type_t<T>>(e);
 };
+
+auto current_time_in_millis() {
+	return std::chrono::duration_cast<std::chrono::milliseconds>(
+		std::chrono::system_clock::now().time_since_epoch()).count();
+}
 
 template<typename T, typename P>
 auto max(T&& collection, P predicate) {
@@ -58,33 +67,15 @@ auto min(T&& collection, P predicate) {
 	return std::min_element(collection.begin(), collection.end(), predicate);
 }
 
-template<typename T, typename U>
-typename T::value_type* find_ptr(T& collection, U& needle) {
-	for (auto& elem : collection) {
-		if (elem == needle) {
-			return &elem;
-		}
-	}
-	return nullptr;
-}
-
-float standard_gaussian(float x) {
-	return std::exp(-x * x / 2.0f) / std::sqrt(2.0f * MATH_PI);
-};
-
-float general_gaussian(float x, float mu, float sigma) {
-	return standard_gaussian((x - mu) / sigma) / sigma;
-};
-
-uchar add_ability(uchar abilities, uchar ability) {
+ubyte add_ability(ubyte abilities, ubyte ability) {
 	return abilities | ability;
 }
 
-uchar remove_ability(uchar abilities, uchar ability) {
+ubyte remove_ability(ubyte abilities, ubyte ability) {
 	return abilities & ~ability;
 }
 
-bool has_ability(uchar abilities, uchar ability) {
+bool has_ability(ubyte abilities, ubyte ability) {
 	return (abilities & ability) != 0;
 }
 
@@ -92,27 +83,27 @@ bool has_ability(uchar abilities, uchar ability) {
 
 struct Player {
 
-	uchar health;
-	uchar mana;
-	uchar deck;
-	uchar runes;
+	ubyte health;
+	ubyte mana;
+	ubyte deck;
+	ubyte runes;
 
-	Player(uchar health, uchar mana, uchar deck, uchar runes)
+	Player(ubyte health, ubyte mana, ubyte deck, ubyte runes)
 		: health(health), mana(mana), deck(deck), runes(runes) {}
 
-	Player spendMana(uchar mana) const {
+	Player spendMana(ubyte mana) const {
 		return Player(health, this->mana - mana, deck, runes);
 	}
 
 };
 
-enum class CardLocation : char {
+enum class CardLocation : byte {
 	HAND = 0,
 	MY_SIDE = 1,
 	OPPONENT_SIDE = -1
 };
 
-enum class CardType : uchar {
+enum class CardType : ubyte {
 	CREATURE = 0,
 	GREEN_ITEM = 1,
 	RED_ITEM = 2,
@@ -131,25 +122,25 @@ enum class CardAbility {
 
 struct Card {
 
-	uchar number;
-	uchar instanceId;
+	ubyte number;
+	ubyte instanceId;
 	CardLocation location;
 	CardType type;
-	uchar cost;
-	char attack;
-	char defense;
-	uchar abilities;
-	char myHealthChange;
-	char opponentHealthChange;
-	uchar cardDraw;
+	ubyte cost;
+	byte attack;
+	byte defense;
+	ubyte abilities;
+	byte myHealthChange;
+	byte opponentHealthChange;
+	ubyte cardDraw;
 	bool playedThisTurn;
 	bool alreadyAttacked;
 
 	Card(
-		uchar number, uchar instanceId, CardLocation location,
-		CardType type, uchar cost, char attack, char defense,
-		uchar abilities, char myHealthChange, char opponentHealthChange,
-		uchar cardDraw, bool playedThisTurn, bool alreadyAttacked)
+		ubyte number, ubyte instanceId, CardLocation location,
+		CardType type, ubyte cost, byte attack, byte defense,
+		ubyte abilities, byte myHealthChange, byte opponentHealthChange,
+		ubyte cardDraw, bool playedThisTurn, bool alreadyAttacked)
 		: number(number), instanceId(instanceId), location(location),
 		type(type), cost(cost), attack(attack), defense(defense), abilities(abilities),
 		myHealthChange(myHealthChange), opponentHealthChange(opponentHealthChange),
@@ -171,12 +162,8 @@ struct Card {
 		);
 	}
 
-	Card removeAbility(CardAbility ability) const {
-		return Card(
-			number, instanceId, location, type, cost, attack, defense,
-			remove_ability(abilities, enum_value(ability)), myHealthChange,
-			opponentHealthChange, cardDraw, playedThisTurn, alreadyAttacked
-		);
+	void removeAbility(CardAbility ability) {
+		abilities = remove_ability(abilities, enum_value(ability));
 	}
 
 	Card changeLocation(CardLocation location) const {
@@ -186,20 +173,13 @@ struct Card {
 			playedThisTurn, alreadyAttacked);
 	}
 
-	Card play() const {
-		return Card(
-			number, instanceId, CardLocation::MY_SIDE, type, cost, attack, defense,
-			abilities, myHealthChange, opponentHealthChange, cardDraw,
-			true, alreadyAttacked
-		);
+	void play() {
+		location = CardLocation::MY_SIDE;
+		playedThisTurn = true;
 	}
 
-	Card flagAlreadyAttacked() const {
-		return Card(
-			number, instanceId, location, type, cost, attack, defense,
-			abilities, myHealthChange, opponentHealthChange, cardDraw,
-			playedThisTurn, true
-		);
+	void flagAlreadyAttacked() {
+		alreadyAttacked = true;
 	}
 
 	bool operator==(const Card& other) const {
@@ -223,26 +203,27 @@ struct Card {
 		return !((*this) == other);
 	}
 
-	std::ostream& operator<<(std::ostream& os) {
-		os << std::to_string(number) << " " << std::to_string(instanceId) << " ";
-		os << std::to_string(enum_value(location)) << " " << std::to_string(enum_value(type)) << " ";
-		os << std::to_string(cost) << " " << std::to_string(attack) << " ";
-		os << std::to_string(defense) << " " << abilities << std::to_string(myHealthChange) << " ";
-		os << std::to_string(opponentHealthChange) << " " << std::to_string(cardDraw) << std::endl;
-	}
-
 };
+
+std::ostream& operator<<(std::ostream& os, const Card& card) {
+	os << std::to_string(card.number) << " " << std::to_string(card.instanceId) << " ";
+	os << std::to_string(enum_value(card.location)) << " " << std::to_string(enum_value(card.type)) << " ";
+	os << std::to_string(card.cost) << " " << std::to_string(card.attack) << " ";
+	os << std::to_string(card.defense) << " " << std::to_string(card.abilities) << std::to_string(card.myHealthChange) << " ";
+	os << std::to_string(card.opponentHealthChange) << " " << std::to_string(card.cardDraw);
+	return os;
+}
 
 struct GameState {
 
 	Player me;
 	Player opponent;
-	uchar opponentHand;
-	uchar cardCount;
+	ubyte opponentHand;
+	ubyte cardCount;
 	std::vector<Card> cards;
 
 	template<typename Cards>
-	GameState(Player me, Player opponent, uchar opponentHand, uchar cardCount, Cards&& cards)
+	GameState(Player me, Player opponent, ubyte opponentHand, ubyte cardCount, Cards&& cards)
 		: me(me), opponent(opponent), opponentHand(opponentHand), cardCount(cardCount), cards(std::forward<Cards>(cards)) {}
 
 	bool isDraftingPhase() const {
@@ -255,12 +236,8 @@ struct GameState {
 
 };
 
-template<typename... Args>
-void swap_card(std::vector<Card>& cards, const Card& card, Args&&... args) {
-	new (find_ptr(cards, card)) Card(args...);
-}
-
 struct Action {
+	virtual ~Action() = default;
 	virtual std::string getCommand() const = 0;
 	virtual GameState getResult(const GameState& state) const = 0;
 };
@@ -279,9 +256,9 @@ struct PassAction final : public Action {
 
 struct PickAction final : public Action {
 
-	const uchar cardIndex;
+	const ubyte cardIndex;
 
-	PickAction(uchar cardIndex) : cardIndex(cardIndex) {}
+	PickAction(ubyte cardIndex) : cardIndex(cardIndex) {}
 
 	std::string getCommand() const override {
 		return "PICK " + std::to_string(cardIndex);
@@ -295,7 +272,7 @@ struct PickAction final : public Action {
 
 struct SummonAction final : public Action {
 
-	const Card& card;
+	const Card card;
 
 	SummonAction(const Card& card) : card(card) {}
 
@@ -305,7 +282,7 @@ struct SummonAction final : public Action {
 
 	GameState getResult(const GameState& state) const override {
 		std::vector<Card> copiedCards(state.cards);
-		swap_card(copiedCards, card, card.play());
+		std::find(copiedCards.begin(), copiedCards.end(), card)->play();
 		return GameState(state.me.spendMana(card.cost), state.opponent, state.opponentHand, state.cardCount, std::move(copiedCards));
 	}
 
@@ -313,8 +290,8 @@ struct SummonAction final : public Action {
 
 struct UseGreenItemAction final : public Action {
 
-	const Card& card;
-	const Card& target;
+	const Card card;
+	const Card target;
 
 	UseGreenItemAction(const Card& card, const Card& target)
 		: card(card), target(target) {}
@@ -327,16 +304,15 @@ struct UseGreenItemAction final : public Action {
 		// Heal me and decrease my mana
 		Player newMe(
 			state.me.health + card.myHealthChange,
-			std::max(static_cast<int>(state.me.mana) - static_cast<int>(card.cost), 0),
+			state.me.mana - card.cost,
 			state.me.deck,
 			state.me.runes);
 		std::vector<Card> copiedCards(state.cards);
 		// Possibly add new abilities to the target and increase it's attack and defense
-		swap_card(copiedCards, target, target.number, target.instanceId,
-			target.location, target.type, target.cost, target.attack + card.attack,
-			target.defense + card.defense, target.abilities | card.abilities, target.myHealthChange,
-			target.opponentHealthChange, target.cardDraw, target.playedThisTurn, target.alreadyAttacked
-		);
+		auto targetIt = std::find(copiedCards.begin(), copiedCards.end(), target);
+		targetIt->abilities |= card.abilities;
+		targetIt->attack += card.attack;
+		targetIt->defense += card.defense;
 		// Remove the item from the list of cards
 		copiedCards.erase(std::remove(copiedCards.begin(), copiedCards.end(), card));
 		return GameState(newMe, state.opponent, state.opponentHand, state.cardCount - 1, copiedCards);
@@ -346,8 +322,8 @@ struct UseGreenItemAction final : public Action {
 
 struct UseRedItemAction final : public Action {
 
-	const Card& card;
-	const Card& target;
+	const Card card;
+	const Card target;
 
 	UseRedItemAction(const Card& card, const Card& target)
 		: card(card), target(target) {}
@@ -388,13 +364,11 @@ struct UseRedItemAction final : public Action {
 			copiedCards.erase(std::remove(copiedCards.begin(), copiedCards.end(), target));
 		}
 		else {
-			// Swap the creature with the new one
-			swap_card(
-				copiedCards, target, target.number, target.instanceId, target.location,
-				target.type, target.cost, newAttack, newDefense, newAbilities,
-				target.myHealthChange, target.opponentHealthChange, target.cardDraw,
-				target.playedThisTurn, target.alreadyAttacked
-			);
+			// Change the creature's stats
+			auto targetIt = std::find(copiedCards.begin(), copiedCards.end(), target);
+			targetIt->abilities = newAbilities;
+			targetIt->attack = newAttack;
+			targetIt->defense = newDefense;
 		}
 		// Remove the item from the list of cards
 		copiedCards.erase(std::remove(copiedCards.begin(), copiedCards.end(), card));
@@ -405,7 +379,7 @@ struct UseRedItemAction final : public Action {
 
 struct UseBlueItemAction final : public Action {
 
-	const Card& card;
+	const Card card;
 	const Card* target;
 
 	UseBlueItemAction(const Card& card, const Card* target)
@@ -424,26 +398,23 @@ struct UseBlueItemAction final : public Action {
 			? card.opponentHealthChange
 			: card.opponentHealthChange + card.defense;
 		Player newOpponent(state.opponent.health + opponentHealthChange, state.opponent.mana, state.opponent.deck, state.opponent.runes);
-		uchar newCardCount = state.cardCount - 1;
+		ubyte newCardCount = state.cardCount - 1;
 		// Apply negative effects on creature if it was targeted
 		if (target != nullptr) {
 			std::vector<Card> copiedCards(state.cards);
+			auto targetIt = std::find(copiedCards.begin(), copiedCards.end(), *target);
 			if (target->hasAbility(CardAbility::WARD)) {
 				// Remove the ward
-				swap_card(copiedCards, *target, target->removeAbility(CardAbility::WARD));
+				targetIt->removeAbility(CardAbility::WARD);
 			}
 			else if (-card.defense >= target->defense) {
 				// The target is dead
-				copiedCards.erase(std::remove(copiedCards.begin(), copiedCards.end(), *target));
+				copiedCards.erase(targetIt);
 				newCardCount -= 1;
 			}
 			else {
 				// The target is damaged
-				swap_card(
-					copiedCards, *target, target->number, target->instanceId, target->location,
-					target->type, target->cost, target->attack, target->defense + card.defense,
-					target->abilities, target->myHealthChange, target->opponentHealthChange,
-					target->cardDraw, target->playedThisTurn, target->alreadyAttacked);
+				targetIt->defense += card.defense;
 			}
 			return GameState(newMe, newOpponent, state.opponentHand, newCardCount, copiedCards);
 		}
@@ -454,7 +425,7 @@ struct UseBlueItemAction final : public Action {
 
 struct AttackFaceAction final : public Action {
 
-	const Card& card;
+	const Card card;
 
 	AttackFaceAction(const Card& card) : card(card) {}
 
@@ -466,7 +437,7 @@ struct AttackFaceAction final : public Action {
 		Player newOpponent(state.opponent.health - card.attack,
 			state.opponent.mana, state.opponent.deck, state.opponent.runes);
 		std::vector<Card> copiedCards(state.cards);
-		swap_card(copiedCards, card, card.flagAlreadyAttacked());
+		std::find(copiedCards.begin(), copiedCards.end(), card)->flagAlreadyAttacked();
 		return GameState(state.me, newOpponent, state.opponentHand, state.cardCount, copiedCards);
 	}
 
@@ -474,8 +445,8 @@ struct AttackFaceAction final : public Action {
 
 struct AttackCreatureAction final : public Action {
 
-	const Card& attacker;
-	const Card& target;
+	const Card attacker;
+	const Card target;
 
 	AttackCreatureAction(const Card& attacker, const Card& target)
 		: attacker(attacker), target(target) {}
@@ -489,11 +460,13 @@ struct AttackCreatureAction final : public Action {
 
 	GameState getResult(const GameState& state) const override {
 		std::vector<Card> copiedCards(state.cards);
-		uchar myNewHealth = state.me.health;
-		uchar opponentNewHealth = state.opponent.health;
-		char targetNewDefense = target.defense - attacker.attack;
-		uchar targetNewAbilities = target.abilities;
-		uchar attackerDealtDamage = 0;
+		auto attackerIt = std::find(copiedCards.begin(), copiedCards.end(), attacker);
+		auto targetIt = std::find(copiedCards.begin(), copiedCards.end(), target);
+		ubyte myNewHealth = state.me.health;
+		ubyte opponentNewHealth = state.opponent.health;
+		byte targetNewDefense = target.defense - attacker.attack;
+		ubyte targetNewAbilities = target.abilities;
+		ubyte attackerDealtDamage = 0;
 		bool targetDied = false;
 		// Handle the attacker -> target phase
 		if (target.hasAbility(CardAbility::WARD)) {
@@ -504,7 +477,7 @@ struct AttackCreatureAction final : public Action {
 		else {
 			attackerDealtDamage = std::min(attacker.attack, target.defense);
 			if (attacker.hasAbility(CardAbility::BREAKTHROUGH) && attacker.attack > target.defense) {
-				uchar breakthroughDamage = attacker.attack - target.defense;
+				ubyte breakthroughDamage = attacker.attack - target.defense;
 				opponentNewHealth -= breakthroughDamage;
 			}
 			if (attacker.attack >= target.defense || attacker.hasAbility(CardAbility::LETHAL)) {
@@ -515,19 +488,16 @@ struct AttackCreatureAction final : public Action {
 		}
 		if (!targetDied) {
 			// The target receives damage
-			swap_card(
-				copiedCards, target, target.number, target.instanceId, target.location,
-				target.type, target.cost, target.attack, targetNewDefense, targetNewAbilities,
-				target.myHealthChange, target.opponentHealthChange, target.cardDraw,
-				target.playedThisTurn, target.alreadyAttacked);
+			targetIt->abilities = targetNewAbilities;
+			targetIt->defense = targetNewDefense;
 		}
 		if (attacker.hasAbility(CardAbility::DRAIN)) {
 			myNewHealth += attackerDealtDamage;
 		}
 		// Handle the target -> attacker phase
-		char attackerNewDefense = attacker.defense - target.attack;
-		uchar attackerNewAbilities = attacker.abilities;
-		uchar targetDealtDamage = 0;
+		byte attackerNewDefense = attacker.defense - target.attack;
+		ubyte attackerNewAbilities = attacker.abilities;
+		ubyte targetDealtDamage = 0;
 		bool attackerDied = false;
 		if (attacker.hasAbility(CardAbility::WARD)) {
 			// The attacker does not receive any damage but loses ward
@@ -537,7 +507,7 @@ struct AttackCreatureAction final : public Action {
 		else {
 			targetDealtDamage = std::min(target.attack, attacker.defense);
 			if (target.hasAbility(CardAbility::BREAKTHROUGH) && target.attack > attacker.defense) {
-				uchar breakthroughDamage = target.attack - attacker.defense;
+				ubyte breakthroughDamage = target.attack - attacker.defense;
 				myNewHealth -= breakthroughDamage;
 			}
 			if (target.attack >= attacker.defense || target.hasAbility(CardAbility::LETHAL)) {
@@ -548,11 +518,9 @@ struct AttackCreatureAction final : public Action {
 		}
 		if (!attackerDied) {
 			// The attacker receives damage
-			swap_card(
-				copiedCards, attacker, attacker.number, attacker.instanceId, attacker.location,
-				attacker.type, attacker.cost, attacker.attack, attackerNewDefense, attackerNewAbilities,
-				attacker.myHealthChange, attacker.opponentHealthChange, attacker.cardDraw,
-				attacker.playedThisTurn, true);
+			attackerIt->abilities = attackerNewAbilities;
+			attackerIt->defense = attackerNewDefense;
+			attackerIt->flagAlreadyAttacked();
 		}
 		if (target.hasAbility(CardAbility::DRAIN)) {
 			opponentNewHealth += targetDealtDamage;
@@ -572,13 +540,13 @@ Player parse_player() {
 	std::cin >> health >> mana >> deck >> runes;
 	std::cin.ignore();
 	return {
-		static_cast<uchar>(health),
-		static_cast<uchar>(mana),
-		static_cast<uchar>(deck),
-		static_cast<uchar>(runes) };
+		static_cast<ubyte>(health),
+		static_cast<ubyte>(mana),
+		static_cast<ubyte>(deck),
+		static_cast<ubyte>(runes) };
 };
 
-CardAbility char_to_ability(char c) {
+CardAbility char_to_ability(byte c) {
 	switch (c) {
 	case 'B':
 		return CardAbility::BREAKTHROUGH;
@@ -599,9 +567,9 @@ CardAbility char_to_ability(char c) {
 	}
 };
 
-uchar parse_abilities(const std::string& abilities) {
+ubyte parse_abilities(const std::string& abilities) {
 	int abilityValue = 0;
-	for (char c : abilities) {
+	for (byte c : abilities) {
 		abilityValue |= enum_value(char_to_ability(c));
 	}
 	return abilityValue;
@@ -656,10 +624,6 @@ float calculate_ability_value(CardAbility ability, const Card& card) {
 	}
 };
 
-float calculate_curve_value(const Card& card) {
-	return general_gaussian(card.cost, CURVE_MEAN, CURVE_VARIANCE) * CURVE_VALUE;
-};
-
 float sum_ability_value(const Card& card) {
 	static const std::vector<CardAbility> possibleAbilities = {
 		CardAbility::BREAKTHROUGH, CardAbility::CHARGE, CardAbility::DRAIN,
@@ -685,7 +649,7 @@ float calculate_value(const Card& card) {
 }
 
 float calculate_draft_value(const Card& card) {
-	return calculate_value(card) * calculate_curve_value(card);
+	return calculate_value(card) - (card.cost * 2.0f);
 };
 
 std::vector<std::unique_ptr<Action>> collect_possible_actions(const GameState& state) {
@@ -790,22 +754,23 @@ struct GameStateNode {
 
 };
 
-std::unique_ptr<GameStateNode> calculate_tree_children(const GameState& state) {
+std::unique_ptr<GameStateNode> calculate_tree_in_time_frame(const GameState& state, long long startMillis, long long maxMillis) {
 	auto possibleActions = collect_possible_actions(state);
 	if (possibleActions.empty()) {
-		// std::cerr << "End of branch" << std::endl;
 		return std::make_unique<GameStateNode>(evaluate_game_state(state), GameStateNode::ChildrenContainer());
 	}
 	GameStateNode::ChildrenContainer children;
 	for (auto& action : possibleActions) {
+		auto millis = current_time_in_millis();
+		if (millis - startMillis >= maxMillis) {
+			return std::make_unique<GameStateNode>(evaluate_game_state(state), std::move(children));
+		}
 		GameState resultingState = action->getResult(state);
-		// std::cerr << "Inserting action " << action->getCommand() << " with value " << evaluate_game_state(resultingState) << " into tree." << std::endl;
 		children.emplace(
 			std::piecewise_construct,
 			std::forward_as_tuple(std::move(action)),
-			std::forward_as_tuple(calculate_tree_children(resultingState)));
+			std::forward_as_tuple(calculate_tree_in_time_frame(resultingState, startMillis, maxMillis)));
 	}
-	// std::cerr << "End of branch" << std::endl;
 	return std::make_unique<GameStateNode>(evaluate_game_state(state), std::move(children));
 }
 
@@ -819,7 +784,6 @@ std::pair<float, std::vector<Action*>> max_sequence(const GameStateNode& node, c
 			maxValueSequence = maxChildSequence;
 		}
 	}
-	// std::cerr << "Max value: " << maxValueSequence.first << std::endl;
 	return maxValueSequence;
 }
 
@@ -833,7 +797,7 @@ void play_drafting_turn(const GameState& state) {
 void play_real_turn(const GameState& state) {
 	GameState currentState(state);
 	std::string actionBuffer;
-	auto rootNode = calculate_tree_children(state);
+	auto rootNode = calculate_tree_in_time_frame(state, current_time_in_millis(), TREE_BUILDING_MAX_MILLIS);
 	auto maxSequence = max_sequence(*rootNode, {});
 	for (auto action : maxSequence.second) {
 		if (!actionBuffer.empty()) {
@@ -848,7 +812,7 @@ void play_real_turn(const GameState& state) {
 	std::cout << actionBuffer << std::endl;
 }
 
-int main(int argc, char** argv) {
+int main(int argc, byte** argv) {
 	while (true) {
 		GameState state(parse_game_state());
 		if (state.isDraftingPhase()) {
