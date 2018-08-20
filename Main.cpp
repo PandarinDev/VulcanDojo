@@ -396,10 +396,15 @@ struct UseBlueItemAction final : public Action {
 	UseBlueItemAction(const Card& card, const Card* target)
 		: card(card), target(target) {}
 
+	~UseBlueItemAction() {
+		delete target;
+	}
+
 	std::string getCommand() const override {
-		return "USE " + (target != nullptr)
-			? std::to_string(target->instanceId)
-			: "-1";
+		if (target == nullptr) {
+			return "USE " + std::to_string(card.instanceId) + " -1";
+		}
+		return "USE " + std::to_string(card.instanceId) + " " + std::to_string(target->instanceId);
 	}
 
 	GameState getResult(const GameState& state) const override {
@@ -712,7 +717,7 @@ std::vector<std::unique_ptr<Action>> collect_possible_actions(const GameState& s
 			if (card->defense < 0) {
 				// It is possible to use the card on creatures
 				for (const auto& hostileCreature : cardsOnOpponentSide) {
-					possibleActions.emplace_back(std::make_unique<UseBlueItemAction>(*card, hostileCreature));
+					possibleActions.emplace_back(std::make_unique<UseBlueItemAction>(*card, new Card(*hostileCreature)));
 				}
 			}
 			possibleActions.emplace_back(std::make_unique<UseBlueItemAction>(*card, nullptr));
