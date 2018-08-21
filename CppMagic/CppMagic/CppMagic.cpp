@@ -577,11 +577,9 @@ namespace Simulator
         {
             auto defIndex = find_if(state.EnemyBoard.begin(), state.EnemyBoard.begin()+state.EnemyBoardCount, [=](const Card& c) { return c.InstanceId == defenderId;});
             auto& defender = *defIndex;
-            char attackerHpBefore = attacker.DefenseValue;
-            char defenderHpBefore = defender.DefenseValue;
             AttackCreature(attacker, defender);
 			attacker.SetDidAttack(true);
-            Drain(state.MyPlayer, attacker, max(0, defenderHpBefore - max(static_cast<char>(0), defender.DefenseValue)));
+            Drain(state.MyPlayer, attacker, attacker.AttackValue);
             if(attacker.DefenseValue <= 0)
             {
                 state.RemoveCardFromMyBoard(attIndex);
