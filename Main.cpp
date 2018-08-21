@@ -18,7 +18,6 @@ using ubyte = std::uint8_t;
 
 // Constants
 
-static constexpr float MATH_PI = 3.14159265358979323846f;
 static constexpr ubyte BOARD_SIZE = 6;
 static constexpr ubyte HAND_SIZE = 8;
 static constexpr ubyte MAX_CARDS = 2 * BOARD_SIZE + HAND_SIZE;
@@ -28,22 +27,27 @@ static constexpr float CURVE_MEAN = 3.0f;
 static constexpr float CURVE_VARIANCE = 1.4f;
 static constexpr float CURVE_VALUE = 5.0f;
 
+// Gamestate factors for weighting
+
+static constexpr float CARD_IN_HAND_FACTOR = 0.3f;
+
 // Card stat factors for weighting
 
+static constexpr float COST_FACTOR = 1.8f;
 static constexpr float ATTACK_FACTOR = 1.0f;
 static constexpr float DEFENSE_FACTOR = 0.8f;
 static constexpr float PLAYER_HP_FACTOR = 0.8f;
-static constexpr float OPPONENT_HP_FACTOR = 1.0f;
-static constexpr float CARD_DRAW_FACTOR = 0.5f;
+static constexpr float OPPONENT_HP_FACTOR = 0.8f;
+static constexpr float CARD_DRAW_FACTOR = 1.0f;
 
 // Card ability factors for weighting
 
 static constexpr float BREAKTHROUGH_FACTOR = 0.15f;
 static constexpr float CHARGE_FACTOR = 0.5f;
-static constexpr float DRAIN_FACTOR = 0.075f;
+static constexpr float DRAIN_FACTOR = 0.3f;
 static constexpr float GUARD_FACTOR = 0.3f;
-static constexpr float LETHAL_FACTOR = 2.0f;
-static constexpr float WARD_FACTOR = 1.0f;
+static constexpr float LETHAL_FACTOR = 3.0f;
+static constexpr float WARD_FACTOR = 3.0f;
 
 // General utility functions
 
@@ -55,16 +59,6 @@ auto enum_value(T e) {
 auto current_time_in_millis() {
 	return std::chrono::duration_cast<std::chrono::milliseconds>(
 		std::chrono::system_clock::now().time_since_epoch()).count();
-}
-
-template<typename T, typename P>
-auto max(T&& collection, P predicate) {
-	return std::max_element(collection.begin(), collection.end(), predicate);
-}
-
-template<typename T, typename P>
-auto min(T&& collection, P predicate) {
-	return std::min_element(collection.begin(), collection.end(), predicate);
 }
 
 ubyte add_ability(ubyte abilities, ubyte ability) {
@@ -154,23 +148,8 @@ struct Card {
 		return has_ability(abilities, enum_value(ability));
 	}
 
-	Card addAbility(CardAbility ability) const {
-		return Card(
-			number, instanceId, location, type, cost, attack, defense,
-			add_ability(abilities, enum_value(ability)), myHealthChange,
-			opponentHealthChange, cardDraw, playedThisTurn, alreadyAttacked
-		);
-	}
-
 	void removeAbility(CardAbility ability) {
 		abilities = remove_ability(abilities, enum_value(ability));
-	}
-
-	Card changeLocation(CardLocation location) const {
-		return Card(
-			number, instanceId, location, type, cost, attack, defense,
-			abilities, myHealthChange, opponentHealthChange, cardDraw,
-			playedThisTurn, alreadyAttacked);
 	}
 
 	void play() {
@@ -183,20 +162,7 @@ struct Card {
 	}
 
 	bool operator==(const Card& other) const {
-		return
-			number == other.number &&
-			instanceId == other.instanceId &&
-			location == other.location &&
-			type == other.type &&
-			cost == other.cost &&
-			attack == other.attack &&
-			defense == other.defense &&
-			abilities == other.abilities &&
-			myHealthChange == other.myHealthChange &&
-			opponentHealthChange == other.opponentHealthChange &&
-			cardDraw == other.cardDraw &&
-			playedThisTurn == other.playedThisTurn &&
-			alreadyAttacked == other.alreadyAttacked;
+		return instanceId == other.instanceId;
 	}
 
 	bool operator!=(const Card& other) const {
@@ -204,15 +170,6 @@ struct Card {
 	}
 
 };
-
-std::ostream& operator<<(std::ostream& os, const Card& card) {
-	os << std::to_string(card.number) << " " << std::to_string(card.instanceId) << " ";
-	os << std::to_string(enum_value(card.location)) << " " << std::to_string(enum_value(card.type)) << " ";
-	os << std::to_string(card.cost) << " " << std::to_string(card.attack) << " ";
-	os << std::to_string(card.defense) << " " << std::to_string(card.abilities) << std::to_string(card.myHealthChange) << " ";
-	os << std::to_string(card.opponentHealthChange) << " " << std::to_string(card.cardDraw);
-	return os;
-}
 
 struct GameState {
 
@@ -324,7 +281,7 @@ struct UseGreenItemAction final : public Action {
 		targetIt->defense += card.defense;
 		// Remove the item from the list of cards
 		copiedCards.erase(std::remove(copiedCards.begin(), copiedCards.end(), card));
-		return GameState(newMe, state.opponent, state.opponentHand, state.cardCount - 1, copiedCards);
+		return GameState(newMe, state.opponent, state.opponentHand, state.cardCount - 1, std::move(copiedCards));
 	}
 
 };
@@ -383,7 +340,7 @@ struct UseRedItemAction final : public Action {
 		}
 		// Remove the item from the list of cards
 		copiedCards.erase(std::remove(copiedCards.begin(), copiedCards.end(), card));
-		return GameState(newMe, newOpponent, state.opponentHand, newCardCount, copiedCards);
+		return GameState(newMe, newOpponent, state.opponentHand, newCardCount, std::move(copiedCards));
 	}
 
 };
@@ -432,7 +389,7 @@ struct UseBlueItemAction final : public Action {
 				// The target is damaged
 				targetIt->defense += card.defense;
 			}
-			return GameState(newMe, newOpponent, state.opponentHand, newCardCount, copiedCards);
+			return GameState(newMe, newOpponent, state.opponentHand, newCardCount, std::move(copiedCards));
 		}
 		return GameState(newMe, newOpponent, state.opponentHand, newCardCount, state.cards);
 	}
@@ -454,7 +411,7 @@ struct AttackFaceAction final : public Action {
 			state.opponent.mana, state.opponent.deck, state.opponent.runes);
 		std::vector<Card> copiedCards(state.cards);
 		std::find(copiedCards.begin(), copiedCards.end(), card)->flagAlreadyAttacked();
-		return GameState(state.me, newOpponent, state.opponentHand, state.cardCount, copiedCards);
+		return GameState(state.me, newOpponent, state.opponentHand, state.cardCount, std::move(copiedCards));
 	}
 
 };
@@ -482,7 +439,6 @@ struct AttackCreatureAction final : public Action {
 		ubyte opponentNewHealth = state.opponent.health;
 		byte targetNewDefense = target.defense - attacker.attack;
 		ubyte targetNewAbilities = target.abilities;
-		ubyte attackerDealtDamage = 0;
 		bool targetDied = false;
 		// Handle the attacker -> target phase
 		if (target.hasAbility(CardAbility::WARD)) {
@@ -491,7 +447,6 @@ struct AttackCreatureAction final : public Action {
 			targetNewAbilities = remove_ability(target.abilities, enum_value(CardAbility::WARD));
 		}
 		else {
-			attackerDealtDamage = std::min(attacker.attack, target.defense);
 			if (attacker.hasAbility(CardAbility::BREAKTHROUGH) && attacker.attack > target.defense) {
 				ubyte breakthroughDamage = attacker.attack - target.defense;
 				opponentNewHealth -= breakthroughDamage;
@@ -508,12 +463,11 @@ struct AttackCreatureAction final : public Action {
 			targetIt->defense = targetNewDefense;
 		}
 		if (attacker.hasAbility(CardAbility::DRAIN)) {
-			myNewHealth += attackerDealtDamage;
+			myNewHealth += attacker.attack;
 		}
 		// Handle the target -> attacker phase
 		byte attackerNewDefense = attacker.defense - target.attack;
 		ubyte attackerNewAbilities = attacker.abilities;
-		ubyte targetDealtDamage = 0;
 		bool attackerDied = false;
 		if (attacker.hasAbility(CardAbility::WARD)) {
 			// The attacker does not receive any damage but loses ward
@@ -521,7 +475,6 @@ struct AttackCreatureAction final : public Action {
 			attackerNewAbilities = remove_ability(attackerNewAbilities, enum_value(CardAbility::WARD));
 		}
 		else {
-			targetDealtDamage = std::min(target.attack, attacker.defense);
 			if (target.hasAbility(CardAbility::BREAKTHROUGH) && target.attack > attacker.defense) {
 				ubyte breakthroughDamage = target.attack - attacker.defense;
 				myNewHealth -= breakthroughDamage;
@@ -538,13 +491,10 @@ struct AttackCreatureAction final : public Action {
 			attackerIt->defense = attackerNewDefense;
 			attackerIt->flagAlreadyAttacked();
 		}
-		if (target.hasAbility(CardAbility::DRAIN)) {
-			opponentNewHealth += targetDealtDamage;
-		}
 
 		Player newMe(myNewHealth, state.me.mana, state.me.deck, state.me.runes);
 		Player newOpponent(opponentNewHealth, state.opponent.mana, state.opponent.deck, state.opponent.runes);
-		return GameState(newMe, newOpponent, state.opponentHand, state.cardCount, copiedCards);
+		return GameState(newMe, newOpponent, state.opponentHand, state.cardCount, std::move(copiedCards));
 	}
 
 };
@@ -643,7 +593,7 @@ float calculate_ability_value(CardAbility ability, const Card& card) {
 float sum_ability_value(const Card& card) {
 	static const std::vector<CardAbility> possibleAbilities = {
 		CardAbility::BREAKTHROUGH, CardAbility::CHARGE, CardAbility::DRAIN,
-		CardAbility::GUARD, CardAbility::GUARD, CardAbility::WARD
+		CardAbility::GUARD, CardAbility::LETHAL, CardAbility::WARD
 	};
 	float value = 0.0f;
 	for (auto ability : possibleAbilities) {
@@ -665,7 +615,7 @@ float calculate_value(const Card& card) {
 }
 
 float calculate_draft_value(const Card& card) {
-	return calculate_value(card) - (card.cost * 2.0f);
+	return calculate_value(card) - (card.cost * COST_FACTOR);
 };
 
 std::vector<std::unique_ptr<Action>> collect_possible_actions(const GameState& state) {
@@ -754,10 +704,13 @@ float evaluate_game_state(const GameState& state) {
 		return std::numeric_limits<float>::lowest();
 	}
 	float value = 0.0f;
-	value += state.me.health;
-	value -= state.opponent.health;
+	value += state.me.health * PLAYER_HP_FACTOR;
+	value -= state.opponent.health * OPPONENT_HP_FACTOR;
 	for (const auto& card : state.cards) {
 		switch (card.location) {
+		case CardLocation::HAND:
+			value += CARD_IN_HAND_FACTOR;
+			break;
 		case CardLocation::MY_SIDE:
 			value += calculate_value(card);
 			break;
@@ -770,7 +723,7 @@ float evaluate_game_state(const GameState& state) {
 }
 
 struct GameStateNode {
-	
+
 	using ChildrenContainer = std::unordered_map<std::unique_ptr<Action>, std::unique_ptr<GameStateNode>>;
 
 	float value;
@@ -815,7 +768,9 @@ std::pair<float, std::vector<Action*>> max_sequence(const GameStateNode& node, c
 }
 
 void play_drafting_turn(const GameState& state) {
-	auto bestCardIt = max(state.cards, [](const auto& c1, const auto& c2) {
+	auto bestCardIt = std::max_element(state.cards.begin() ,state.cards.end(), [](const auto& c1, const auto& c2) {
+		std::cerr << "Draft value of " << std::to_string(c1.number) << ": " << calculate_draft_value(c1) << std::endl;
+		std::cerr << "Draft value of " << std::to_string(c2.number) << ": " << calculate_draft_value(c2) << std::endl;
 		return calculate_draft_value(c1) < calculate_draft_value(c2);
 	});
 	std::cout << PickAction(bestCardIt - state.cards.begin()).getCommand() << std::endl;
