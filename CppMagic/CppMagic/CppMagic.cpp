@@ -881,17 +881,9 @@ namespace BattlePhase
                     break;
                 }
 
-
                 const double value = EvaluateGameState(gs);
-#ifdef CCGDeveloper
-                if(toState.Actions.size() == 1 && 
-                    (toState.Actions[0] == GameAction(ActionType::CreatureAttack, 22, 5) || 
-                        toState.Actions[0] == GameAction(ActionType::CreatureAttack, 22, -1)))
-                {    
-                    cerr << "GraphSolver debug: " << value << " with action " << toState.ToString() << endl;
-                    int debug = 4;
-				    PrintEvaluateGameState(gs);
-                }
+#ifdef CCGDeveloper0
+				PrintEvaluateGameState(gs);
 #endif
                 if(value > bestValue)
                 {
@@ -1029,11 +1021,6 @@ namespace BattlePhase
             
             const auto damageGatherer = [](const double s, auto& c) { return s + (double)c.AttackValue;};
             const auto hpGatherer = [](const double s, auto& c) { 
-                double def = c.DefenseValue;
-                double wardCoeff = c.HasWard() ? 2.0 : 1.0;
-                return s + def*wardCoeff;
-            };
-            const auto guardGatherer = [](const double s, auto& c) { 
                 double guardDef = c.HasGuard() ? c.DefenseValue : 0.0;
                 double wardCoeff = c.HasWard() ? 2.0 : 1.0;
                 return s + guardDef*wardCoeff;
@@ -1049,7 +1036,7 @@ namespace BattlePhase
 			double enemyDamage = std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoardEnd(), 0.0, damageGatherer);
 			double enemyCards = 0.7*gs.EnemyHandCount + 0.8*gs.EnemyBoardCount;
 			double enemyPotential = fmax(0.5, enemyDamage + enemyCards);
-			double myHp = gs.MyPlayer.Health + std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, guardGatherer);
+			double myHp = gs.MyPlayer.Health + std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, hpGatherer);
 			double enemyTurnsToWin = (myHp - enemyDamage) / enemyPotential;
 
 			double result = enemyTurnsToWin / myTurnsToWin;
@@ -1064,11 +1051,6 @@ namespace BattlePhase
             // An evaluation function is the hardest and most important part of an AI
             const auto damageGatherer = [](const double s, auto& c) { return s + (double)c.AttackValue;};
             const auto hpGatherer = [](const double s, auto& c) { 
-                double def = c.DefenseValue;
-                double wardCoeff = c.HasWard() ? 2.0 : 1.0;
-                return s + def*wardCoeff;
-            };
-            const auto guardGatherer = [](const double s, auto& c) { 
                 double guardDef = c.HasGuard() ? c.DefenseValue : 0.0;
                 double wardCoeff = c.HasWard() ? 2.0 : 1.0;
                 return s + guardDef*wardCoeff;
@@ -1084,7 +1066,7 @@ namespace BattlePhase
 			double enemyDamage = std::accumulate(gs.EnemyBoard.begin(), gs.EnemyBoardEnd(), 0.0, damageGatherer);
 			double enemyCards = 0.7*gs.EnemyHandCount + 0.8*gs.EnemyBoardCount;
 			double enemyPotential = fmax(0.5, enemyDamage + enemyCards);
-			double myHp = gs.MyPlayer.Health + std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, guardGatherer);
+			double myHp = gs.MyPlayer.Health + std::accumulate(gs.MyBoard.begin(), gs.MyBoardEnd(), 0.0, hpGatherer);
 			double enemyTurnsToWin = (myHp - enemyDamage) / enemyPotential;
 
 			double result = enemyTurnsToWin / myTurnsToWin;
@@ -1473,19 +1455,14 @@ void mainTest()
     {
         sw.Restart();
         CCG::GameState gs = CCG::Parse::GameState(std::queue<string>({
-            "29 7 18 25",
-            "25 7 18 20",
-            "6",
-            "9",
-            "105 12 0 0 5 4 6 ---G-- 0 0 0",
-            "32 16 0 0 3 3 2 ------ 0 0 1",
-            "68 24 0 0 6 7 5 -----W 0 0 0",
-            "91 18 1 0 0 1 2 ---G-- 0 0 0",
-            "86 20 1 0 3 1 2 -C---- 0 0 0",
-            "63 4 1 0 2 0 4 ---G-W 0 0 0",
-            "14 22 1 0 4 9 1 ------ 0 0 0",
-            "68 1 -1 0 6 7 5 ------ 0 0 0",
-            "23 5 -1 0 7 8 8 ------ 0 0 0"
+			"34 11 14 25",
+			"28 10 15 25",
+			"0",
+			"4",
+			"98 31 0 0 3 2 4 ---G-- 0 0 0",
+			"88 27 1 0 5 4 1 -C---- 0 0 0",
+			"95 29 1 0 2 2 3 ---G-- 0 0 0",
+			"71 30 -1 0 4 5 3 BC---- 0 0 0"
             }));
         
         CCG::printError(gs.ToString());
